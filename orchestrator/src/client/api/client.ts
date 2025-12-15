@@ -8,7 +8,8 @@ import type {
   JobsListResponse, 
   PipelineStatusResponse,
   JobSource,
-  PipelineRun 
+  PipelineRun,
+  AppSettings,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -92,6 +93,22 @@ export async function runPipeline(config?: {
   });
 }
 
+// Settings API
+export async function getSettings(): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/settings');
+}
+
+export async function updateSettings(update: {
+  model?: string | null
+  pipelineWebhookUrl?: string | null
+  jobCompleteWebhookUrl?: string | null
+}): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+}
+
 // Database API
 export async function clearDatabase(): Promise<{
   message: string;
@@ -107,15 +124,4 @@ export async function clearDatabase(): Promise<{
   });
 }
 
-// Bulk operations
-export async function processAllDiscovered(): Promise<{
-  message: string;
-  count: number;
-}> {
-  return fetchApi<{
-    message: string;
-    count: number;
-  }>('/jobs/process-discovered', {
-    method: 'POST',
-  });
-}
+// Bulk operations (intentionally none - processing is manual)

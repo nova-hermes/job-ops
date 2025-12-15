@@ -3,7 +3,16 @@
  */
 
 import React from "react";
-import { ChevronDown, Loader2, Play, RefreshCcw, Rocket, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  Play,
+  RefreshCcw,
+  Rocket,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -65,29 +74,32 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <Rocket className="h-5 w-5" />
+    <header className='sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+      <div className='container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4'>
+        <Link
+          to='/'
+          className='flex items-center gap-3 hover:opacity-80 transition-opacity'
+        >
+          <div className='flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm'>
+            <Rocket className='h-5 w-5' />
           </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold tracking-tight">Job Ops</div>
-            <div className="text-xs text-muted-foreground">Orchestrator</div>
+          <div className='leading-tight'>
+            <div className='text-sm font-semibold tracking-tight'>Job Ops</div>
+            <div className='text-xs text-muted-foreground'>Orchestrator</div>
           </div>
-        </div>
+        </Link>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className='flex flex-wrap items-center gap-1.5'>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
-                variant="outline"
-                size="sm"
+                variant='outline'
+                size='sm'
                 disabled={isLoading}
-                title="Clear all jobs from database"
+                title='Clear all jobs from database'
               >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Clear DB</span>
+                <Trash2 className='h-4 w-4' />
+                <span className='hidden sm:inline'>Clear DB</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -107,26 +119,42 @@ export const Header: React.FC<HeaderProps> = ({
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
-            <RefreshCcw className="h-4 w-4" />
-            <span className="hidden sm:inline">Refresh</span>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={onRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCcw className='h-4 w-4' />
+            <span className='hidden sm:inline'>Refresh</span>
           </Button>
 
-          <div className="flex items-center">
+          <Button
+            asChild
+            variant='outline'
+            size='sm'
+          >
+            <Link to='/settings'>
+              <Settings className='h-4 w-4' />
+              <span className='hidden sm:inline'>Settings</span>
+            </Link>
+          </Button>
+
+          <div>
             <Button
-              size="sm"
+              size='sm'
               onClick={onRunPipeline}
               disabled={isPipelineRunning}
-              className="rounded-r-none"
+              className='rounded-r-none'
             >
               {isPipelineRunning ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className='h-4 w-4 animate-spin' />
                   Running...
                 </>
               ) : (
                 <>
-                  <Play className="h-4 w-4" />
+                  <Play className='h-4 w-4' />
                   Run Pipeline
                 </>
               )}
@@ -135,34 +163,47 @@ export const Header: React.FC<HeaderProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  size="sm"
+                  size='sm'
                   disabled={isPipelineRunning}
-                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                  aria-label="Select pipeline sources"
+                  className='rounded-l-none border-l border-primary-foreground/20'
+                  aria-label='Select pipeline sources'
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className='h-4 w-4' />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent
+                align='end'
+                className='w-56'
+              >
                 <DropdownMenuLabel>Sources</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {orderedSources.map((source) => (
                   <DropdownMenuCheckboxItem
                     key={source}
                     checked={pipelineSources.includes(source)}
-                    onCheckedChange={(checked) => toggleSource(source, Boolean(checked))}
+                    onCheckedChange={(checked) =>
+                      toggleSource(source, Boolean(checked))
+                    }
                   >
                     {sourceLabel[source]}
                   </DropdownMenuCheckboxItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(orderedSources)}>
+                <DropdownMenuItem
+                  onSelect={() => onPipelineSourcesChange(orderedSources)}
+                >
                   All sources
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["gradcracker"])}>
+                <DropdownMenuItem
+                  onSelect={() => onPipelineSourcesChange(["gradcracker"])}
+                >
                   Gradcracker only
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["indeed", "linkedin"])}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    onPipelineSourcesChange(["indeed", "linkedin"])
+                  }
+                >
                   Indeed + LinkedIn only
                 </DropdownMenuItem>
               </DropdownMenuContent>

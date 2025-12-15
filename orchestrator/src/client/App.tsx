@@ -4,11 +4,13 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Route, Routes } from "react-router-dom";
 
 import { Toaster } from "@/components/ui/sonner";
 import type { Job, JobSource, JobStatus } from "../shared/types";
 import { Header, JobList, PipelineProgress, Stats } from "./components";
 import * as api from "./api";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin"];
 const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
@@ -26,7 +28,6 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
-  const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [pipelineSources, setPipelineSources] = useState<JobSource[]>(() => {
     try {
       const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
@@ -159,35 +160,6 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleProcessAll = async () => {
-    try {
-      setIsProcessingAll(true);
-      const result = await api.processAllDiscovered();
-      toast.message("Processing jobs", { description: `Processing ${result.count} jobs in background...` });
-
-      const pollInterval = setInterval(async () => {
-        try {
-          const data = await api.getJobs();
-          setJobs(data.jobs);
-          setStats(data.byStatus);
-
-          const stillDiscovered = data.byStatus.discovered + data.byStatus.processing;
-          if (stillDiscovered === 0) {
-            clearInterval(pollInterval);
-            setIsProcessingAll(false);
-            toast.success("All jobs processed");
-          }
-        } catch {
-          // Ignore errors
-        }
-      }, 3000);
-    } catch (error) {
-      setIsProcessingAll(false);
-      const message = error instanceof Error ? error.message : "Failed to process jobs";
-      toast.error(message);
-    }
-  };
-
   return (
     <>
       <Header
@@ -200,19 +172,25 @@ export const App: React.FC = () => {
         onPipelineSourcesChange={setPipelineSources}
       />
 
-      <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
-        <PipelineProgress isRunning={isPipelineRunning} />
-        <Stats stats={stats} />
-        <JobList
-          jobs={jobs}
-          onApply={handleApply}
-          onReject={handleReject}
-          onProcess={handleProcess}
-          onProcessAll={handleProcessAll}
-          processingJobId={processingJobId}
-          isProcessingAll={isProcessingAll}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
+              <PipelineProgress isRunning={isPipelineRunning} />
+              <Stats stats={stats} />
+              <JobList
+                jobs={jobs}
+                onApply={handleApply}
+                onReject={handleReject}
+                onProcess={handleProcess}
+                processingJobId={processingJobId}
+              />
+            </main>
+          }
         />
-      </main>
+        <Route path="/settings" element={<SettingsPage />} />
+      </Routes>
 
       <Toaster position="bottom-right" richColors closeButton />
     </>

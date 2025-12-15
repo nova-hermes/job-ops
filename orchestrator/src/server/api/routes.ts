@@ -6,12 +6,41 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
+import * as settingsRepo from '../repositories/settings.js';
 import { runPipeline, processJob, getPipelineStatus, subscribeToProgress, getProgress } from '../pipeline/index.js';
 import { createNotionEntry } from '../services/notion.js';
 import { clearDatabase } from '../db/clear.js';
-import type { JobStatus, ApiResponse, JobsListResponse, PipelineStatusResponse } from '../../shared/types.js';
+import type { Job, JobStatus, ApiResponse, JobsListResponse, PipelineStatusResponse } from '../../shared/types.js';
 
 export const apiRouter = Router();
+
+async function notifyJobCompleteWebhook(job: Job) {
+  const overrideWebhookUrl = await settingsRepo.getSetting('jobCompleteWebhookUrl')
+  const webhookUrl = (overrideWebhookUrl || process.env.JOB_COMPLETE_WEBHOOK_URL || '').trim()
+  if (!webhookUrl) return
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const secret = process.env.WEBHOOK_SECRET
+    if (secret) headers.Authorization = `Bearer ${secret}`
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        event: 'job.completed',
+        sentAt: new Date().toISOString(),
+        job,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn(`⚠️ Job complete webhook POST failed (${response.status}): ${await response.text()}`)
+    }
+  } catch (error) {
+    console.warn('⚠️ Job complete webhook POST failed:', error)
+  }
+}
 
 // ============================================================================
 // Jobs API
@@ -144,6 +173,10 @@ apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
       appliedAt,
       notionPageId: notionResult.pageId,
     });
+
+    if (updatedJob) {
+      notifyJobCompleteWebhook(updatedJob).catch(console.warn)
+    }
     
     res.json({ success: true, data: updatedJob });
   } catch (error) {
@@ -170,32 +203,40 @@ apiRouter.post('/jobs/:id/reject', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// Pipeline API
+// ============================================================================
+
 /**
- * POST /api/jobs/process-discovered - Process all discovered jobs (generate PDFs)
+ * GET /api/settings - Get app settings (effective + defaults)
  */
-apiRouter.post('/jobs/process-discovered', async (req: Request, res: Response) => {
+apiRouter.get('/settings', async (_req: Request, res: Response) => {
   try {
-    const discoveredJobs = await jobsRepo.getAllJobs(['discovered']);
-    
-    // Process each job in background
-    const processInBackground = async () => {
-      for (const job of discoveredJobs.filter(j => j.status === 'discovered')) {
-        try {
-          await processJob(job.id);
-        } catch (error) {
-          console.error(`Failed to process job ${job.id}:`, error);
-        }
-      }
-    };
-    
-    processInBackground().catch(console.error);
-    
-    res.json({ 
-      success: true, 
-      data: { 
-        message: `Processing ${discoveredJobs.length} jobs`,
-        count: discoveredJobs.length,
-      } 
+    const overrideModel = await settingsRepo.getSetting('model');
+    const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
+    const model = overrideModel || defaultModel;
+
+    const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl');
+    const defaultPipelineWebhookUrl = process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || '';
+    const pipelineWebhookUrl = overridePipelineWebhookUrl || defaultPipelineWebhookUrl;
+
+    const overrideJobCompleteWebhookUrl = await settingsRepo.getSetting('jobCompleteWebhookUrl');
+    const defaultJobCompleteWebhookUrl = process.env.JOB_COMPLETE_WEBHOOK_URL || '';
+    const jobCompleteWebhookUrl = overrideJobCompleteWebhookUrl || defaultJobCompleteWebhookUrl;
+
+    res.json({
+      success: true,
+      data: {
+        model,
+        defaultModel,
+        overrideModel,
+        pipelineWebhookUrl,
+        defaultPipelineWebhookUrl,
+        overridePipelineWebhookUrl,
+        jobCompleteWebhookUrl,
+        defaultJobCompleteWebhookUrl,
+        overrideJobCompleteWebhookUrl,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -203,9 +244,65 @@ apiRouter.post('/jobs/process-discovered', async (req: Request, res: Response) =
   }
 });
 
-// ============================================================================
-// Pipeline API
-// ============================================================================
+const updateSettingsSchema = z.object({
+  model: z.string().trim().min(1).max(200).nullable().optional(),
+  pipelineWebhookUrl: z.string().trim().min(1).max(2000).nullable().optional(),
+  jobCompleteWebhookUrl: z.string().trim().min(1).max(2000).nullable().optional(),
+});
+
+/**
+ * PATCH /api/settings - Update settings overrides
+ */
+apiRouter.patch('/settings', async (req: Request, res: Response) => {
+  try {
+    const input = updateSettingsSchema.parse(req.body);
+
+    if ('model' in input) {
+      const model = input.model ?? null;
+      await settingsRepo.setSetting('model', model);
+    }
+
+    if ('pipelineWebhookUrl' in input) {
+      const pipelineWebhookUrl = input.pipelineWebhookUrl ?? null;
+      await settingsRepo.setSetting('pipelineWebhookUrl', pipelineWebhookUrl);
+    }
+
+    if ('jobCompleteWebhookUrl' in input) {
+      const webhookUrl = input.jobCompleteWebhookUrl ?? null;
+      await settingsRepo.setSetting('jobCompleteWebhookUrl', webhookUrl);
+    }
+
+    const overrideModel = await settingsRepo.getSetting('model');
+    const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
+    const model = overrideModel || defaultModel;
+
+    const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl');
+    const defaultPipelineWebhookUrl = process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || '';
+    const pipelineWebhookUrl = overridePipelineWebhookUrl || defaultPipelineWebhookUrl;
+
+    const overrideJobCompleteWebhookUrl = await settingsRepo.getSetting('jobCompleteWebhookUrl');
+    const defaultJobCompleteWebhookUrl = process.env.JOB_COMPLETE_WEBHOOK_URL || '';
+    const jobCompleteWebhookUrl = overrideJobCompleteWebhookUrl || defaultJobCompleteWebhookUrl;
+
+    res.json({
+      success: true,
+      data: {
+        model,
+        defaultModel,
+        overrideModel,
+        pipelineWebhookUrl,
+        defaultPipelineWebhookUrl,
+        overridePipelineWebhookUrl,
+        jobCompleteWebhookUrl,
+        defaultJobCompleteWebhookUrl,
+        overrideJobCompleteWebhookUrl,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
 
 /**
  * GET /api/pipeline/status - Get pipeline status

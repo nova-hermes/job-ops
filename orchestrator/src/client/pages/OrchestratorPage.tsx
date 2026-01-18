@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
+  Briefcase,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -14,8 +15,10 @@ import {
   ExternalLink,
   FileText,
   Filter,
+  Home,
   Loader2,
   MapPin,
+  Menu,
   MoreHorizontal,
   Play,
   RefreshCcw,
@@ -26,7 +29,7 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -48,6 +51,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
 import { PipelineProgress, DiscoveredPanel } from "../components";
@@ -293,6 +303,9 @@ const ScoreMeter: React.FC<{ score: number | null }> = ({ score }) => {
 };
 
 export const OrchestratorPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [navOpen, setNavOpen] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [stats, setStats] = useState<Record<JobStatus, number>>({
     discovered: 0,
@@ -302,6 +315,13 @@ export const OrchestratorPage: React.FC = () => {
     skipped: 0,
     expired: 0,
   });
+
+  const navLinks = [
+    { to: "/", label: "Dashboard", icon: Home },
+    { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
+    { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
+    { to: "/settings", label: "Settings", icon: Settings },
+  ];
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
@@ -1044,49 +1064,74 @@ export const OrchestratorPage: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
+        <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Sheet open={navOpen} onOpenChange={setNavOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <SheetHeader>
+                  <SheetTitle>JobOps</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col gap-2">
+                  {navLinks.map(({ to, label, icon: Icon }) => (
+                    <button
+                      key={to}
+                      type="button"
+                      onClick={() => {
+                        if (location.pathname === to) {
+                          setNavOpen(false);
+                          return;
+                        }
+                        setNavOpen(false);
+                        setTimeout(() => navigate(to), 150);
+                      }}
+                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left ${
+                        location.pathname === to
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 leading-tight">
+                <div className="text-sm font-semibold tracking-tight">Job Ops</div>
+                <div className="text-xs text-muted-foreground">Orchestrator</div>
+              </div>
             </div>
-            <div className="min-w-0 leading-tight">
-              <div className="text-sm font-semibold tracking-tight">Job Ops</div>
-              <div className="text-xs text-muted-foreground">Orchestrator</div>
-            </div>
+
             {isPipelineRunning && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                 Pipeline running
               </span>
             )}
           </div>
 
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-            <Button asChild variant="ghost" size="icon" aria-label="Visa Sponsors search">
-              <Link to="/visa-sponsors">
-                <Shield className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="icon" aria-label="UK Visa Jobs search">
-              <Link to="/ukvisajobs">
-                <Search className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="icon" aria-label="Settings">
-              <Link to="/settings">
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
-
-            <div className="flex w-full items-center gap-1 sm:w-auto">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 size="sm"
                 onClick={handleRunPipeline}
                 disabled={isPipelineRunning}
-                className="w-full gap-2 sm:w-auto"
+                className="gap-2"
               >
                 {isPipelineRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                {isPipelineRunning ? "Running" : "Run pipeline"}
+                <span className="hidden sm:inline">{isPipelineRunning ? "Running" : "Run pipeline"}</span>
               </Button>
 
               <DropdownMenu>
@@ -1160,13 +1205,13 @@ export const OrchestratorPage: React.FC = () => {
 
           {/* Compact metrics summary - demoted visual weight */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground/80">
-            <span className="font-medium text-foreground/60">{totalJobs} jobs total</span>
-            <span className="text-border">•</span>
             <span><span className="tabular-nums">{stats.ready}</span> ready</span>
             <span className="text-border">•</span>
             <span><span className="tabular-nums">{stats.discovered + stats.processing}</span> discovered</span>
             <span className="text-border">•</span>
             <span><span className="tabular-nums">{stats.applied}</span> applied</span>
+            <span className="text-border">•</span>
+            <span className="font-medium text-foreground/60">{totalJobs} jobs total</span>
             {(stats.skipped > 0 || stats.expired > 0) && (
               <>
                 <span className="text-border">•</span>
@@ -1191,8 +1236,8 @@ export const OrchestratorPage: React.FC = () => {
                 ))}
               </TabsList>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full min-w-0 flex-1 sm:min-w-[180px] lg:max-w-[240px] lg:flex-none">
+              <div className="flex lg:flex-nowrap flex-wrap items-center justify-end gap-2">
+                <div className="relative w-full flex-1 min-w-[180px] lg:max-w-[240px] lg:flex-none">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
                   <Input
                     value={searchQuery}
@@ -1201,13 +1246,12 @@ export const OrchestratorPage: React.FC = () => {
                     className="h-8 pl-8 text-sm"
                   />
                 </div>
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground sm:w-auto"
+                      className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
                     >
                       <Filter className="h-3.5 w-3.5" />
                       {sourceFilter === "all" ? "All sources" : sourceLabel[sourceFilter]}
@@ -1235,7 +1279,7 @@ export const OrchestratorPage: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground sm:w-auto"
+                      className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
                     >
                       <ArrowUpDown className="h-3.5 w-3.5" />
                       {sortLabels[sort.key]}

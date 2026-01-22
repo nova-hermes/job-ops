@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { useState } from "react"
+import { useForm, FormProvider } from "react-hook-form"
 
 import { Accordion } from "@/components/ui/accordion"
 import { ResumeProjectsSection } from "./ResumeProjectsSection"
-import type { ResumeProjectCatalogItem, ResumeProjectsSettings } from "@shared/types"
+import type { ResumeProjectCatalogItem } from "@shared/types"
+import { UpdateSettingsInput } from "@shared/settings-schema"
 
 const profileProjects: ResumeProjectCatalogItem[] = [
   {
@@ -23,24 +24,30 @@ const profileProjects: ResumeProjectCatalogItem[] = [
   },
 ]
 
-const ResumeProjectsHarness = ({ initialDraft }: { initialDraft: ResumeProjectsSettings | null }) => {
-  const [draft, setDraft] = useState<ResumeProjectsSettings | null>(initialDraft)
-  const lockedCount = draft?.lockedProjectIds.length ?? 0
+const ResumeProjectsHarness = ({ initialDraft }: { initialDraft: UpdateSettingsInput["resumeProjects"] }) => {
+  const methods = useForm<UpdateSettingsInput>({
+    defaultValues: {
+      resumeProjects: initialDraft
+    }
+  })
+  const watched = methods.watch()
+  const lockedCount = watched.resumeProjects?.lockedProjectIds.length ?? 0
 
   return (
-    <Accordion type="multiple" defaultValue={["resume-projects"]}>
-      <ResumeProjectsSection
-        resumeProjectsDraft={draft}
-        setResumeProjectsDraft={setDraft}
-        profileProjects={profileProjects}
-        lockedCount={lockedCount}
-        maxProjectsTotal={profileProjects.length}
-        isLoading={false}
-        isSaving={false}
-      />
-    </Accordion>
+    <FormProvider {...methods}>
+      <Accordion type="multiple" defaultValue={["resume-projects"]}>
+        <ResumeProjectsSection
+          profileProjects={profileProjects}
+          lockedCount={lockedCount}
+          maxProjectsTotal={profileProjects.length}
+          isLoading={false}
+          isSaving={false}
+        />
+      </Accordion>
+    </FormProvider>
   )
 }
+
 
 describe("ResumeProjectsSection", () => {
   it("clamps max projects to the locked count", async () => {

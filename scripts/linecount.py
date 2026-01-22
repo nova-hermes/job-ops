@@ -23,24 +23,10 @@ SKIP_DIRS_DEFAULT = {
     "data",
 }
 
-SKIP_EXTS_DEFAULT = {
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".gif",
-    ".bmp",
-    ".ico",
-    ".pdf",
-    ".zip",
-    ".gz",
-    ".tar",
-    ".tgz",
-    ".7z",
-    ".exe",
-    ".dll",
-    ".so",
-    ".dylib",
-    ".bin",
+ALLOWED_EXTS = {
+    ".py",
+    ".ts",
+    ".tsx",
 }
 
 SPEC_BY_EXT = {
@@ -120,7 +106,9 @@ def count_file(path: Path):
                     comment += 1
                 continue
 
-            if line_comments and any(stripped.startswith(prefix) for prefix in line_comments):
+            if line_comments and any(
+                stripped.startswith(prefix) for prefix in line_comments
+            ):
                 comment += 1
                 continue
 
@@ -195,8 +183,18 @@ def main():
             path = Path(dirpath) / name
 
             ext = path.suffix.lower()
-            if ext in SKIP_EXTS_DEFAULT:
+            if ext not in ALLOWED_EXTS:
                 continue
+
+            stem = path.stem.lower()
+            if (
+                stem.startswith("test_")
+                or stem.endswith("_test")
+                or stem.endswith(".test")
+                or stem.endswith(".spec")
+            ):
+                continue
+
             if is_binary(str(path)):
                 continue
 

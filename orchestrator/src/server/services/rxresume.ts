@@ -1,4 +1,4 @@
-import { resumeDataSchema } from "../../shared/rxresume-schema";
+import { resumeDataSchema } from "../../shared/rxresume-schema.js";
 
 export interface RxResumeResponse {
     id: string;

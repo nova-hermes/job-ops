@@ -7,7 +7,6 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
-import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { runCrawler } from '../services/crawler.js';
@@ -16,16 +15,17 @@ import { runUkVisaJobs } from '../services/ukvisajobs.js';
 import { scoreJobSuitability } from '../services/scorer.js';
 import { generateTailoring } from '../services/summary.js';
 import { generatePdf } from '../services/pdf.js';
+import { getProfile } from '../services/profile.js';
 import { getSetting } from '../repositories/settings.js';
 import { pickProjectIdsForJob } from '../services/projectSelection.js';
 import { extractProjectsFromProfile, resolveResumeProjectsSettings } from '../services/resumeProjects.js';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
 import * as settingsRepo from '../repositories/settings.js';
+import * as visaSponsors from '../services/visa-sponsors/index.js';
 import { progressHelpers, resetProgress, updateProgress } from './progress.js';
 import type { CreateJobInput, Job, JobSource, PipelineConfig } from '../../shared/types.js';
 import { getDataDir } from '../config/dataDir.js';
-import { getResume } from '../services/rxresume.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PROFILE_PATH = join(__dirname, '../../../../resume-generator/base.json');
@@ -112,7 +112,10 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
   try {
     // Step 1: Load profile
     console.log('\n📋 Loading profile...');
-    const profile = await loadProfile(mergedConfig.profilePath);
+    const profile = await getProfile(mergedConfig.profilePath).catch((error) => {
+      console.warn('⚠️ Failed to load profile for scoring, using empty profile:', error);
+      return {} as Record<string, unknown>;
+    });
 
     // Step 2: Run crawler
     console.log('\n🕷️ Running crawler...');
@@ -120,8 +123,11 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     const discoveredJobs: CreateJobInput[] = [];
     const sourceErrors: string[] = [];
 
+    // Read all settings at once to avoid sequential DB calls
+    const settings = await settingsRepo.getAllSettings();
+
     // Read search terms setting
-    const searchTermsSetting = await settingsRepo.getSetting('searchTerms');
+    const searchTermsSetting = settings.searchTerms;
     let searchTerms: string[] = [];
 
     if (searchTermsSetting) {
@@ -138,7 +144,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     );
 
     // Apply setting override for JobSpy sites
-    const jobspySitesSettingRaw = await settingsRepo.getSetting('jobspySites');
+    const jobspySitesSettingRaw = settings.jobspySites;
     if (jobspySitesSettingRaw) {
       try {
         const allowed = JSON.parse(jobspySitesSettingRaw);
@@ -156,11 +162,11 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         detail: `JobSpy: scraping ${jobSpySites.join(', ')}...`,
       });
 
-      const jobspyLocationSetting = await settingsRepo.getSetting('jobspyLocation');
-      const jobspyResultsWantedSetting = await settingsRepo.getSetting('jobspyResultsWanted');
-      const jobspyHoursOldSetting = await settingsRepo.getSetting('jobspyHoursOld');
-      const jobspyCountryIndeedSetting = await settingsRepo.getSetting('jobspyCountryIndeed');
-      const jobspyLinkedinFetchDescriptionSetting = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
+      const jobspyLocationSetting = settings.jobspyLocation;
+      const jobspyResultsWantedSetting = settings.jobspyResultsWanted;
+      const jobspyHoursOldSetting = settings.jobspyHoursOld;
+      const jobspyCountryIndeedSetting = settings.jobspyCountryIndeed;
+      const jobspyLinkedinFetchDescriptionSetting = settings.jobspyLinkedinFetchDescription;
 
       const jobSpyResult = await runJobSpy({
         sites: jobSpySites,
@@ -169,7 +175,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         resultsWanted: jobspyResultsWantedSetting ? parseInt(jobspyResultsWantedSetting, 10) : undefined,
         hoursOld: jobspyHoursOldSetting ? parseInt(jobspyHoursOldSetting, 10) : undefined,
         countryIndeed: jobspyCountryIndeedSetting ?? undefined,
-        linkedinFetchDescription: jobspyLinkedinFetchDescriptionSetting !== null ? jobspyLinkedinFetchDescriptionSetting === '1' : undefined,
+        linkedinFetchDescription: jobspyLinkedinFetchDescriptionSetting !== null && jobspyLinkedinFetchDescriptionSetting !== undefined ? jobspyLinkedinFetchDescriptionSetting === '1' : undefined,
       });
       if (!jobSpyResult.success) {
         sourceErrors.push(`jobspy: ${jobSpyResult.error ?? 'unknown error'}`);
@@ -188,7 +194,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       // Pass existing URLs to avoid clicking "Apply" on jobs we already have
       const existingJobUrls = await jobsRepo.getAllJobUrls();
 
-      const gradcrackerMaxJobsSetting = await settingsRepo.getSetting('gradcrackerMaxJobsPerTerm');
+      const gradcrackerMaxJobsSetting = settings.gradcrackerMaxJobsPerTerm;
       const gradcrackerMaxJobs = gradcrackerMaxJobsSetting ? parseInt(gradcrackerMaxJobsSetting, 10) : 50;
 
       const crawlerResult = await runCrawler({
@@ -223,7 +229,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       });
 
       // Read max jobs setting from database (default to 50 if not set)
-      const ukvisajobsMaxJobsSetting = await settingsRepo.getSetting('ukvisajobsMaxJobs');
+      const ukvisajobsMaxJobsSetting = settings.ukvisajobsMaxJobs;
       const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting ? parseInt(ukvisajobsMaxJobsSetting, 10) : 50;
 
       const ukVisaResult = await runUkVisaJobs({
@@ -294,10 +300,27 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         suitabilityReason: reason,
       });
 
-      // Update score in database
+      // Calculate sponsor match score using fuzzy search
+      let sponsorMatchScore = 0;
+      let sponsorMatchNames: string | undefined;
+
+      if (job.employer) {
+        const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+          limit: 10,
+          minScore: 50,
+        });
+
+        const summary = visaSponsors.calculateSponsorMatchSummary(sponsorResults);
+        sponsorMatchScore = summary.sponsorMatchScore;
+        sponsorMatchNames = summary.sponsorMatchNames ?? undefined;
+      }
+
+      // Update score and sponsor match in database
       await jobsRepo.updateJob(job.id, {
         suitabilityScore: score,
         suitabilityReason: reason,
+        sponsorMatchScore,
+        sponsorMatchNames,
       });
     }
 
@@ -329,7 +352,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
 
         // Process job (Generate Summary + PDF)
         // We catch errors here to ensure one failure doesn't stop the whole batch
-        const result = await processJob(job.id);
+        const result = await processJob(job.id, { profilePath: mergedConfig.profilePath });
 
         if (result.success) {
           processedCount++;
@@ -396,12 +419,17 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
   }
 }
 
+export type ProcessJobOptions = {
+  force?: boolean;
+  profilePath?: string;
+};
+
 /**
  * Step 1: Generate AI summary and suggest projects.
  */
 export async function summarizeJob(
   jobId: string,
-  options?: { force?: boolean }
+  options?: ProcessJobOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -412,7 +440,7 @@ export async function summarizeJob(
     const job = await jobsRepo.getJobById(jobId);
     if (!job) return { success: false, error: 'Job not found' };
 
-    const profile = await loadProfile(DEFAULT_PROFILE_PATH);
+    const profile = await getProfile(options?.profilePath);
 
     // 1. Generate Summary & Tailoring
     let tailoredSummary = job.tailoredSummary;
@@ -473,7 +501,8 @@ export async function summarizeJob(
  * Step 2: Generate PDF using current summary and project selection.
  */
 export async function generateFinalPdf(
-  jobId: string
+  jobId: string,
+  options?: ProcessJobOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -495,7 +524,7 @@ export async function generateFinalPdf(
         skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : []
       },
       job.jobDescription || '',
-      DEFAULT_PROFILE_PATH,
+      options?.profilePath || DEFAULT_PROFILE_PATH,
       job.selectedProjectIds
     );
 
@@ -522,7 +551,7 @@ export async function generateFinalPdf(
  */
 export async function processJob(
   jobId: string,
-  options?: { force?: boolean }
+  options?: ProcessJobOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -533,7 +562,7 @@ export async function processJob(
     if (!sumResult.success) return sumResult;
 
     // Step 2: Generate PDF
-    const pdfResult = await generateFinalPdf(jobId);
+    const pdfResult = await generateFinalPdf(jobId, options);
     return pdfResult;
 
   } catch (error) {
@@ -547,29 +576,4 @@ export async function processJob(
  */
 export function getPipelineStatus(): { isRunning: boolean } {
   return { isRunning: isPipelineRunning };
-}
-
-/**
- * Load the user profile from JSON file.
- */
-async function loadProfile(profilePath: string): Promise<Record<string, unknown>> {
-  const rxResumeBaseResumeId = await settingsRepo.getSetting('rxResumeBaseResumeId');
-  if (rxResumeBaseResumeId) {
-    try {
-      const resume = await getResume(rxResumeBaseResumeId);
-      return resume.data as Record<string, unknown>;
-    } catch (error) {
-      console.error(`❌ Failed to load resume from Reactive Resume (${rxResumeBaseResumeId}):`, error);
-      throw new Error(`Failed to load profile from Reactive Resume (ID: ${rxResumeBaseResumeId}). Please check your API key and connection.`);
-    }
-  }
-
-  try {
-    const content = await readFile(profilePath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    const message = `No local profile found at ${profilePath} and no Reactive Resume base ID is configured. Reactive Resume integration is required for tailoring.`;
-    console.error(`❌ ${message}`);
-    throw new Error(message);
-  }
 }

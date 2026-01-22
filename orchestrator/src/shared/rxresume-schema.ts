@@ -1,527 +1,897 @@
-import z from "zod";
+// combined types from: https://github.com/amruthpillai/reactive-resume/tree/v4.5.5/libs/schema/src
 
-export const templateSchema = z.enum([
-    "azurill",
-    "bronzor",
-    "chikorita",
-    "ditto",
-    "ditgar",
-    "gengar",
-    "glalie",
-    "kakuna",
-    "lapras",
-    "leafish",
-    "onyx",
-    "pikachu",
-    "rhyhorn",
-]);
+import { z } from "zod";
 
-export type Template = z.infer<typeof templateSchema>;
+// --- Shared ---
 
-export const iconSchema = z
+export type FilterKeys<T, Condition> = {
+    [Key in keyof T]: T[Key] extends Condition ? Key : never;
+}[keyof T];
+
+export const idSchema = z
     .string()
-    .describe(
-        "The icon to display for the custom field. Must be a valid icon name from @phosphor-icons/web icon set, or an empty string to hide. Default to '' (empty string) when unsure which icons are available.",
-    );
+    .cuid2()
+    .length(24)
+    .describe("Unique identifier for the item (CUID2 format)");
 
-export const localeSchema = z
-    .union([
-        z.literal("af-ZA"),
-        z.literal("am-ET"),
-        z.literal("ar-SA"),
-        z.literal("az-AZ"),
-        z.literal("bg-BG"),
-        z.literal("bn-BD"),
-        z.literal("ca-ES"),
-        z.literal("cs-CZ"),
-        z.literal("da-DK"),
-        z.literal("de-DE"),
-        z.literal("el-GR"),
-        z.literal("en-US"),
-        z.literal("es-ES"),
-        z.literal("fa-IR"),
-        z.literal("fi-FI"),
-        z.literal("fr-FR"),
-        z.literal("he-IL"),
-        z.literal("hi-IN"),
-        z.literal("hu-HU"),
-        z.literal("id-ID"),
-        z.literal("it-IT"),
-        z.literal("ja-JP"),
-        z.literal("km-KH"),
-        z.literal("kn-IN"),
-        z.literal("ko-KR"),
-        z.literal("lt-LT"),
-        z.literal("lv-LV"),
-        z.literal("ml-IN"),
-        z.literal("mr-IN"),
-        z.literal("ms-MY"),
-        z.literal("ne-NP"),
-        z.literal("nl-NL"),
-        z.literal("no-NO"),
-        z.literal("or-IN"),
-        z.literal("pl-PL"),
-        z.literal("pt-BR"),
-        z.literal("pt-PT"),
-        z.literal("ro-RO"),
-        z.literal("ru-RU"),
-        z.literal("sk-SK"),
-        z.literal("sq-AL"),
-        z.literal("sr-SP"),
-        z.literal("sv-SE"),
-        z.literal("ta-IN"),
-        z.literal("te-IN"),
-        z.literal("th-TH"),
-        z.literal("tr-TR"),
-        z.literal("uk-UA"),
-        z.literal("uz-UZ"),
-        z.literal("vi-VN"),
-        z.literal("zh-CN"),
-        z.literal("zh-TW"),
-        z.literal("zu-ZA"),
-    ])
-    .describe("The language used in the resume, used for displaying pre-translated section headings, if not overridden.")
-    .catch("en-US");
+export const itemSchema = z.object({
+    id: idSchema,
+    visible: z.boolean(),
+});
+
+export type Item = z.infer<typeof itemSchema>;
+
+export const defaultItem: Item = {
+    id: "",
+    visible: true,
+};
 
 export const urlSchema = z.object({
-    url: z
-        .string()
-        .describe(
-            "The URL to show as a link. Must be a valid URL with a protocol (http:// or https://). Leave blank to hide.",
-        ),
-    label: z.string().describe("The label to display for the URL. Leave blank to display the URL as-is."),
+    label: z.string(),
+    href: z.literal("").or(z.string().url()),
 });
 
-export const pictureSchema = z.object({
-    hidden: z.boolean().describe("Whether to hide the picture from the resume."),
-    url: z
-        .string()
-        .describe(
-            "The URL to the picture to display on the resume. Must be a valid URL with a protocol (http:// or https://). Leave blank to hide.",
-        ),
-    size: z
-        .number()
-        .min(32)
-        .max(512)
-        .describe("The size of the picture to display on the resume, defined in points (pt)."),
-    rotation: z
-        .number()
-        .min(0)
-        .max(360)
-        .describe("The rotation of the picture to display on the resume, defined in degrees (°)."),
-    aspectRatio: z
-        .number()
-        .min(0.5)
-        .max(2.5)
-        .describe(
-            "The aspect ratio of the picture to display on the resume, defined as width / height (e.g. 1.5 for 1.5:1 or 0.5 for 1:2).",
-        ),
-    borderRadius: z
-        .number()
-        .min(0)
-        .max(100)
-        .describe("The border radius of the picture to display on the resume, defined in points (pt)."),
-    borderColor: z
-        .string()
-        .describe("The color of the border of the picture to display on the resume, defined as rgba(r, g, b, a)."),
-    borderWidth: z
-        .number()
-        .min(0)
-        .describe("The width of the border of the picture to display on the resume, defined in points (pt)."),
-    shadowColor: z
-        .string()
-        .describe("The color of the shadow of the picture to display on the resume, defined as rgba(r, g, b, a)."),
-    shadowWidth: z
-        .number()
-        .min(0)
-        .describe("The width of the shadow of the picture to display on the resume, defined in points (pt)."),
-});
+export type URL = z.infer<typeof urlSchema>;
+
+export const defaultUrl: URL = {
+    label: "",
+    href: "",
+};
+
+// --- Basics ---
 
 export const customFieldSchema = z.object({
-    id: z.string().describe("The unique identifier for the custom field. Usually generated as a UUID."),
-    icon: iconSchema,
-    text: z.string().describe("The text to display for the custom field."),
+    id: z.string().cuid2(),
+    icon: z.string(),
+    name: z.string(),
+    value: z.string(),
 });
+
+export type CustomField = z.infer<typeof customFieldSchema>;
 
 export const basicsSchema = z.object({
-    name: z.string().describe("The full name of the author of the resume."),
-    headline: z.string().describe("The headline of the author of the resume."),
-    email: z.string().email().or(z.literal("")).describe("The email address of the author of the resume. Leave blank to hide."),
-    phone: z.string().describe("The phone number of the author of the resume. Leave blank to hide."),
-    location: z.string().describe("The location of the author of the resume."),
-    website: urlSchema.describe("The website of the author of the resume."),
-    customFields: z.array(customFieldSchema).describe("The custom fields to display on the resume."),
+    name: z.string(),
+    headline: z.string(),
+    email: z.literal("").or(z.string().email()),
+    phone: z.string(),
+    location: z.string(),
+    url: urlSchema,
+    customFields: z.array(customFieldSchema),
+    picture: z.object({
+        url: z.string(),
+        size: z.number().default(64),
+        aspectRatio: z.number().default(1),
+        borderRadius: z.number().default(0),
+        effects: z.object({
+            hidden: z.boolean().default(false),
+            border: z.boolean().default(false),
+            grayscale: z.boolean().default(false),
+        }),
+    }),
 });
 
-export const summarySchema = z.object({
-    title: z.string().describe("The title of the summary of the resume."),
-    columns: z.number().describe("The number of columns the summary should span across."),
-    hidden: z.boolean().describe("Whether to hide the summary from the resume."),
-    content: z
-        .string()
-        .describe("The content of the summary of the resume. This should be a HTML-formatted string. Leave blank to hide."),
+export type Basics = z.infer<typeof basicsSchema>;
+
+export const defaultBasics: Basics = {
+    name: "",
+    headline: "",
+    email: "",
+    phone: "",
+    location: "",
+    url: defaultUrl,
+    customFields: [],
+    picture: {
+        url: "",
+        size: 64,
+        aspectRatio: 1,
+        borderRadius: 0,
+        effects: {
+            hidden: false,
+            border: false,
+            grayscale: false,
+        },
+    },
+};
+
+// --- Metadata ---
+
+export const defaultLayout = [
+    [
+        ["profiles", "summary", "experience", "education", "projects", "volunteer", "references"],
+        ["skills", "interests", "certifications", "awards", "publications", "languages"],
+    ],
+];
+
+export const metadataSchema = z.object({
+    template: z.string().default("rhyhorn"),
+    layout: z.array(z.array(z.array(z.string()))).default(defaultLayout), // pages -> columns -> sections
+    css: z.object({
+        value: z.string().default("* {\n\toutline: 1px solid #000;\n\toutline-offset: 4px;\n}"),
+        visible: z.boolean().default(false),
+    }),
+    page: z.object({
+        margin: z.number().default(18),
+        format: z.enum(["a4", "letter"]).default("a4"),
+        options: z.object({
+            breakLine: z.boolean().default(true),
+            pageNumbers: z.boolean().default(true),
+        }),
+    }),
+    theme: z.object({
+        background: z.string().default("#ffffff"),
+        text: z.string().default("#000000"),
+        primary: z.string().default("#dc2626"),
+    }),
+    typography: z.object({
+        font: z.object({
+            family: z.string().default("IBM Plex Serif"),
+            subset: z.string().default("latin"),
+            variants: z.array(z.string()).default(["regular"]),
+            size: z.number().default(14),
+        }),
+        lineHeight: z.number().default(1.5),
+        hideIcons: z.boolean().default(false),
+        underlineLinks: z.boolean().default(true),
+    }),
+    notes: z.string().default(""),
 });
 
-export const baseItemSchema = z.object({
-    id: z.string().describe("The unique identifier for the item. Usually generated as a UUID."),
-    hidden: z.boolean().describe("Whether to hide the item from the resume."),
+export type Metadata = z.infer<typeof metadataSchema>;
+
+export const defaultMetadata: Metadata = {
+    template: "rhyhorn",
+    layout: defaultLayout,
+    css: {
+        value: "* {\n\toutline: 1px solid #000;\n\toutline-offset: 4px;\n}",
+        visible: false,
+    },
+    page: {
+        margin: 18,
+        format: "a4",
+        options: {
+            breakLine: true,
+            pageNumbers: true,
+        },
+    },
+    theme: {
+        background: "#ffffff",
+        text: "#000000",
+        primary: "#dc2626",
+    },
+    typography: {
+        font: {
+            family: "IBM Plex Serif",
+            subset: "latin",
+            variants: ["regular", "italic", "600"],
+            size: 14,
+        },
+        lineHeight: 1.5,
+        hideIcons: false,
+        underlineLinks: true,
+    },
+    notes: "",
+};
+
+// --- Sections ---
+
+// Award
+export const awardSchema = itemSchema.extend({
+    title: z.string().min(1),
+    awarder: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
 });
 
-export const awardItemSchema = baseItemSchema.extend({
-    title: z.string().min(1).describe("The title of the award."),
-    awarder: z.string().describe("The awarder of the award."),
-    date: z.string().describe("The date when the award was received."),
-    website: urlSchema.describe("The website of the award, if any."),
-    description: z
-        .string()
-        .describe("The description of the award. This should be a HTML-formatted string. Leave blank to hide."),
+export type Award = z.infer<typeof awardSchema>;
+
+export const defaultAward: Award = {
+    ...defaultItem,
+    title: "",
+    awarder: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// Certification
+export const certificationSchema = itemSchema.extend({
+    name: z.string().min(1),
+    issuer: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
 });
 
-export const certificationItemSchema = baseItemSchema.extend({
-    title: z.string().min(1).describe("The title of the certification."),
-    issuer: z.string().describe("The issuer of the certification."),
-    date: z.string().describe("The date when the certification was received."),
-    website: urlSchema.describe("The website of the certification, if any."),
-    description: z
-        .string()
-        .describe("The description of the certification. This should be a HTML-formatted string. Leave blank to hide."),
-});
+export type Certification = z.infer<typeof certificationSchema>;
 
-export const educationItemSchema = baseItemSchema.extend({
-    school: z.string().min(1).describe("The name of the school or institution."),
-    degree: z.string().describe("The degree or qualification obtained."),
-    area: z.string().describe("The area of study or specialization."),
-    grade: z.string().describe("The grade or score achieved."),
-    location: z.string().describe("The location of the school or institution."),
-    period: z.string().describe("The period of time the education was obtained over."),
-    website: urlSchema.describe("The website of the school or institution, if any."),
-    description: z
-        .string()
-        .describe("The description of the education. This should be a HTML-formatted string. Leave blank to hide."),
-});
+export const defaultCertification: Certification = {
+    ...defaultItem,
+    name: "",
+    issuer: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
 
-export const experienceItemSchema = baseItemSchema.extend({
-    company: z.string().min(1).describe("The name of the company or organization."),
-    position: z.string().describe("The position held at the company or organization."),
-    location: z.string().describe("The location of the company or organization."),
-    period: z.string().describe("The period of time the author was employed at the company or organization."),
-    website: urlSchema.describe("The website of the company or organization, if any."),
-    description: z
-        .string()
-        .describe("The description of the experience. This should be a HTML-formatted string. Leave blank to hide."),
-});
-
-export const interestItemSchema = baseItemSchema.extend({
-    icon: iconSchema,
-    name: z.string().min(1).describe("The name of the interest/hobby."),
-    keywords: z
-        .array(z.string())
-        .catch([])
-        .describe("The keywords associated with the interest/hobby, if any. These are displayed as tags below the name."),
-});
-
-export const languageItemSchema = baseItemSchema.extend({
-    language: z.string().min(1).describe("The name of the language the author knows."),
-    fluency: z
-        .string()
-        .describe(
-            "The fluency level of the language. Can be any text, such as 'Native', 'Fluent', 'Conversational', etc. or can also be a CEFR level (A1, A2, B1, B2, C1, C2).",
-        ),
-    level: z
-        .number()
-        .min(0)
-        .max(5)
-        .catch(0)
-        .describe(
-            "The proficiency level of the language, defined as a number between 0 and 5. If set to 0, the icons displaying the level will be hidden.",
-        ),
-});
-
-export const profileItemSchema = baseItemSchema.extend({
-    icon: iconSchema,
-    network: z.string().min(1).describe("The name of the network or platform."),
-    username: z.string().describe("The username of the author on the network or platform."),
-    website: urlSchema.describe("The link to the profile of the author on the network or platform, if any."),
-});
-
-export const projectItemSchema = baseItemSchema.extend({
-    name: z.string().min(1).describe("The name of the project."),
-    period: z.string().describe("The period of time the project was worked on."),
-    website: urlSchema.describe("The link to the project, if any."),
-    description: z
-        .string()
-        .describe("The description of the project. This should be a HTML-formatted string. Leave blank to hide."),
-});
-
-export const publicationItemSchema = baseItemSchema.extend({
-    title: z.string().min(1).describe("The title of the publication."),
-    publisher: z.string().describe("The publisher of the publication."),
-    date: z.string().describe("The date when the publication was published."),
-    website: urlSchema.describe("The link to the publication, if any."),
-    description: z
-        .string()
-        .describe("The description of the publication. This should be a HTML-formatted string. Leave blank to hide."),
-});
-
-export const referenceItemSchema = baseItemSchema.extend({
-    name: z.string().min(1).describe("The name of the reference, or a note such as 'Available upon request'."),
-    description: z
-        .string()
-        .describe(
-            "The description of the reference. Can be used to display a quote, a testimonial, etc. This should be a HTML-formatted string. Leave blank to hide.",
-        ),
-});
-
-export const skillItemSchema = baseItemSchema.extend({
-    icon: iconSchema,
-    name: z.string().min(1).describe("The name of the skill."),
-    proficiency: z
-        .string()
-        .describe(
-            "The proficiency level of the skill. Can be any text, such as 'Beginner', 'Intermediate', 'Advanced', etc.",
-        ),
-    level: z
-        .number()
-        .min(0)
-        .max(5)
-        .catch(0)
-        .describe(
-            "The proficiency level of the skill, defined as a number between 0 and 5. If set to 0, the icons displaying the level will be hidden.",
-        ),
-    keywords: z
-        .array(z.string())
-        .catch([])
-        .describe("The keywords associated with the skill, if any. These are displayed as tags below the name."),
-});
-
-export const volunteerItemSchema = baseItemSchema.extend({
-    organization: z.string().min(1).describe("The name of the organization or company."),
-    location: z.string().describe("The location of the organization or company."),
-    period: z.string().describe("The period of time the author was volunteered at the organization or company."),
-    website: urlSchema.describe("The link to the organization or company, if any."),
-    description: z
-        .string()
-        .describe(
-            "The description of the volunteer experience. This should be a HTML-formatted string. Leave blank to hide.",
-        ),
-});
-
-export const baseSectionSchema = z.object({
-    title: z.string().describe("The title of the section."),
-    columns: z.number().describe("The number of columns the section should span across."),
-    hidden: z.boolean().describe("Whether to hide the section from the resume."),
-});
-
-export const awardsSectionSchema = baseSectionSchema.extend({
-    items: z.array(awardItemSchema).describe("The items to display in the awards section."),
-});
-
-export const certificationsSectionSchema = baseSectionSchema.extend({
-    items: z.array(certificationItemSchema).describe("The items to display in the certifications section."),
-});
-
-export const educationSectionSchema = baseSectionSchema.extend({
-    items: z.array(educationItemSchema).describe("The items to display in the education section."),
-});
-
-export const experienceSectionSchema = baseSectionSchema.extend({
-    items: z.array(experienceItemSchema).describe("The items to display in the experience section."),
-});
-
-export const interestsSectionSchema = baseSectionSchema.extend({
-    items: z.array(interestItemSchema).describe("The items to display in the interests section."),
-});
-
-export const languagesSectionSchema = baseSectionSchema.extend({
-    items: z.array(languageItemSchema).describe("The items to display in the languages section."),
-});
-
-export const profilesSectionSchema = baseSectionSchema.extend({
-    items: z.array(profileItemSchema).describe("The items to display in the profiles section."),
-});
-
-export const projectsSectionSchema = baseSectionSchema.extend({
-    items: z.array(projectItemSchema).describe("The items to display in the projects section."),
-});
-
-export const publicationsSectionSchema = baseSectionSchema.extend({
-    items: z.array(publicationItemSchema).describe("The items to display in the publications section."),
-});
-
-export const referencesSectionSchema = baseSectionSchema.extend({
-    items: z.array(referenceItemSchema).describe("The items to display in the references section."),
-});
-
-export const skillsSectionSchema = baseSectionSchema.extend({
-    items: z.array(skillItemSchema).describe("The items to display in the skills section."),
-});
-
-export const volunteerSectionSchema = baseSectionSchema.extend({
-    items: z.array(volunteerItemSchema).describe("The items to display in the volunteer section."),
-});
-
-export const sectionsSchema = z.object({
-    profiles: profilesSectionSchema.describe("The section to display the profiles of the author."),
-    experience: experienceSectionSchema.describe("The section to display the experience of the author."),
-    education: educationSectionSchema.describe("The section to display the education of the author."),
-    projects: projectsSectionSchema.describe("The section to display the projects of the author."),
-    skills: skillsSectionSchema.describe("The section to display the skills of the author."),
-    languages: languagesSectionSchema.describe("The section to display the languages of the author."),
-    interests: interestsSectionSchema.describe("The section to display the interests of the author."),
-    awards: awardsSectionSchema.describe("The section to display the awards of the author."),
-    certifications: certificationsSectionSchema.describe("The section to display the certifications of the author."),
-    publications: publicationsSectionSchema.describe("The section to display the publications of the author."),
-    volunteer: volunteerSectionSchema.describe("The section to display the volunteer experience of the author."),
-    references: referencesSectionSchema.describe("The section to display the references of the author."),
-});
-
-export type SectionType = keyof z.infer<typeof sectionsSchema>;
-export type SectionData<T extends SectionType = SectionType> = z.infer<typeof sectionsSchema>[T];
-export type SectionItem<T extends SectionType = SectionType> = SectionData<T>["items"][number];
-
-export const customSectionSchema = baseSectionSchema.extend({
-    id: z.string().describe("The unique identifier for the custom section. Usually generated as a UUID."),
-    content: z
-        .string()
-        .describe("The content of the custom section. This should be a HTML-formatted string. Leave blank to hide."),
+// Custom Section
+export const customSectionSchema = itemSchema.extend({
+    name: z.string(),
+    description: z.string(),
+    date: z.string(),
+    location: z.string(),
+    summary: z.string(),
+    keywords: z.array(z.string()).default([]),
+    url: urlSchema,
 });
 
 export type CustomSection = z.infer<typeof customSectionSchema>;
 
-export const customSectionsSchema = z.array(customSectionSchema);
+export const defaultCustomSection: CustomSection = {
+    ...defaultItem,
+    name: "",
+    description: "",
+    date: "",
+    location: "",
+    summary: "",
+    keywords: [],
+    url: defaultUrl,
+};
 
-export const fontWeightSchema = z.enum(["100", "200", "300", "400", "500", "600", "700", "800", "900"]);
-
-export const typographyItemSchema = z.object({
-    fontFamily: z.string().describe("The family of the font to use. Must be a font that is available on Google Fonts."),
-    fontWeights: z
-        .array(fontWeightSchema)
-        .catch(["400"])
-        .describe(
-            "The weight of the font, defined as a number between 100 and 900. Default to 400 when unsure if the weight is available in the font.",
-        ),
-    fontSize: z.number().min(6).max(24).catch(11).describe("The size of the font to use, defined in points (pt)."),
-    lineHeight: z
-        .number()
-        .min(0.5)
-        .max(4)
-        .catch(1.5)
-        .describe("The line height of the font to use, defined as a multiplier of the font size (e.g. 1.5 for 1.5x)."),
+// Education
+export const educationSchema = itemSchema.extend({
+    institution: z.string().min(1),
+    studyType: z.string(),
+    area: z.string(),
+    score: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
 });
 
-export const pageLayoutSchema = z.object({
-    fullWidth: z
-        .boolean()
-        .describe(
-            "Whether the layout of the page should be full width. If true, the main column will span the entire width of the page. This means that there should be no items in the sidebar column.",
-        ),
-    main: z
-        .array(z.string())
-        .describe(
-            "The items to display in the main column of the page. A string array of section IDs (experience, education, projects, skills, languages, interests, awards, certifications, publications, volunteer, references, profiles, summary or UUIDs for custom sections).",
-        ),
-    sidebar: z
-        .array(z.string())
-        .describe(
-            "The items to display in the sidebar column of the page. A string array of section IDs (experience, education, projects, skills, languages, interests, awards, certifications, publications, volunteer, references, profiles, summary or UUIDs for custom sections).",
-        ),
+export type Education = z.infer<typeof educationSchema>;
+
+export const defaultEducation: Education = {
+    ...defaultItem,
+    id: "",
+    institution: "",
+    studyType: "",
+    area: "",
+    score: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// Experience
+export const experienceSchema = itemSchema.extend({
+    company: z.string().min(1),
+    position: z.string(),
+    location: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
 });
 
-export const layoutSchema = z.object({
-    sidebarWidth: z
-        .number()
-        .min(10)
-        .max(50)
-        .catch(35)
-        .describe("The width of the sidebar column, defined as a percentage of the page width."),
-    pages: z.array(pageLayoutSchema).describe("The pages to display in the layout."),
+export type Experience = z.infer<typeof experienceSchema>;
+
+export const defaultExperience: Experience = {
+    ...defaultItem,
+    company: "",
+    position: "",
+    location: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// Interest
+export const interestSchema = itemSchema.extend({
+    name: z.string().min(1),
+    keywords: z.array(z.string()).default([]),
 });
 
-export const cssSchema = z.object({
-    enabled: z.boolean().describe("Whether to enable custom CSS for the resume."),
-    value: z.string().describe("The custom CSS to apply to the resume. This should be a valid CSS string."),
+export type Interest = z.infer<typeof interestSchema>;
+
+export const defaultInterest: Interest = {
+    ...defaultItem,
+    name: "",
+    keywords: [],
+};
+
+// Language
+export const languageSchema = itemSchema.extend({
+    name: z.string().min(1),
+    description: z.string(),
+    level: z.coerce.number().min(0).max(5).default(1),
 });
 
-export const pageSchema = z.object({
-    gapX: z.number().min(0).describe("The horizontal gap between the sections of the page, defined in points (pt)."),
-    gapY: z.number().min(0).describe("The vertical gap between the sections of the page, defined in points (pt)."),
-    marginX: z.number().min(0).describe("The horizontal margin of the page, defined in points (pt)."),
-    marginY: z.number().min(0).describe("The vertical margin of the page, defined in points (pt)."),
-    format: z.enum(["a4", "letter"]).describe("The format of the page. Can be 'a4' or 'letter'."),
-    locale: localeSchema,
-    hideIcons: z.boolean().describe("Whether to hide the icons of the sections.").catch(false),
-});
+export type Language = z.infer<typeof languageSchema>;
 
-export const levelDesignSchema = z.object({
-    icon: iconSchema,
-    type: z
-        .enum(["hidden", "circle", "square", "rectangle", "rectangle-full", "progress-bar", "icon"])
-        .describe(
-            "The type of the level design. 'hidden' will hide the level design, 'circle' will display a circle, 'square' will display a square, 'rectangle' will display a rectangle, 'rectangle-full' will display a full rectangle, 'progress-bar' will display a progress bar, and 'icon' will display an icon. If 'icon' is selected, the icon to display should be specified in the 'icon' field.",
-        ),
-});
+export const defaultLanguage: Language = {
+    ...defaultItem,
+    name: "",
+    description: "",
+    level: 1,
+};
 
-export const colorDesignSchema = z.object({
-    primary: z.string().describe("The primary color of the design, defined as rgba(r, g, b, a)."),
-    text: z
-        .string()
-        .describe("The text color of the design, defined as rgba(r, g, b, a). Usually set to black: rgba(0, 0, 0, 1)."),
-    background: z
-        .string()
-        .describe(
-            "The background color of the design, defined as rgba(r, g, b, a). Usually set to white: rgba(255, 255, 255, 1).",
-        ),
-});
-
-export const designSchema = z.object({
-    level: levelDesignSchema,
-    colors: colorDesignSchema,
-});
-
-export const typographySchema = z.object({
-    body: typographyItemSchema.describe("The typography for the body of the resume."),
-    heading: typographyItemSchema.describe("The typography for the headings of the resume."),
-});
-
-export const metadataSchema = z.object({
-    template: templateSchema
-        .catch("onyx")
-        .describe("The template to use for the resume. Determines the overall design and appearance of the resume."),
-    layout: layoutSchema.describe(
-        "The layout of the resume. Determines the structure and arrangement of the sections on the resume.",
-    ),
-    css: cssSchema.describe(
-        "Custom CSS to apply to the resume. Can be used to override the default styles of the template.",
-    ),
-    page: pageSchema.describe(
-        "The page settings of the resume. Determines the margins, format, and locale of the resume.",
-    ),
-    design: designSchema.describe(
-        "The design settings of the resume. Determines the colors, level designs, and typography of the resume.",
-    ),
-    typography: typographySchema.describe(
-        "The typography settings of the resume. Determines the fonts and sizes of the body and headings of the resume.",
-    ),
-    notes: z
+// Profile
+export const profileSchema = itemSchema.extend({
+    network: z.string().min(1),
+    username: z.string().min(1),
+    icon: z
         .string()
         .describe(
-            "Personal notes for the resume. Can be used to add any additional information or instructions for the resume. These notes are not displayed on the resume, they are only visible to the author of the resume when editing the resume. This should be a HTML-formatted string.",
+            'Slug for the icon from https://simpleicons.org. For example, "github", "linkedin", etc.',
         ),
+    url: urlSchema,
 });
+
+export type Profile = z.infer<typeof profileSchema>;
+
+export const defaultProfile: Profile = {
+    ...defaultItem,
+    network: "",
+    username: "",
+    icon: "",
+    url: defaultUrl,
+};
+
+// Project
+export const projectSchema = itemSchema.extend({
+    name: z.string().min(1),
+    description: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    keywords: z.array(z.string()).default([]),
+    url: urlSchema,
+});
+
+export type Project = z.infer<typeof projectSchema>;
+
+export const defaultProject: Project = {
+    ...defaultItem,
+    name: "",
+    description: "",
+    date: "",
+    summary: "",
+    keywords: [],
+    url: defaultUrl,
+};
+
+// Publication
+export const publicationSchema = itemSchema.extend({
+    name: z.string().min(1),
+    publisher: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
+});
+
+export type Publication = z.infer<typeof publicationSchema>;
+
+export const defaultPublication: Publication = {
+    ...defaultItem,
+    name: "",
+    publisher: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// Reference
+export const referenceSchema = itemSchema.extend({
+    name: z.string().min(1),
+    description: z.string(),
+    summary: z.string(),
+    url: urlSchema,
+});
+
+export type Reference = z.infer<typeof referenceSchema>;
+
+export const defaultReference: Reference = {
+    ...defaultItem,
+    name: "",
+    description: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// Skill
+export const skillSchema = itemSchema.extend({
+    name: z.string(),
+    description: z.string(),
+    level: z.coerce.number().min(0).max(5).default(1),
+    keywords: z.array(z.string()).default([]),
+});
+
+export type Skill = z.infer<typeof skillSchema>;
+
+export const defaultSkill: Skill = {
+    ...defaultItem,
+    name: "",
+    description: "",
+    level: 1,
+    keywords: [],
+};
+
+// Volunteer
+export const volunteerSchema = itemSchema.extend({
+    organization: z.string().min(1),
+    position: z.string(),
+    location: z.string(),
+    date: z.string(),
+    summary: z.string(),
+    url: urlSchema,
+});
+
+export type Volunteer = z.infer<typeof volunteerSchema>;
+
+export const defaultVolunteer: Volunteer = {
+    ...defaultItem,
+    organization: "",
+    position: "",
+    location: "",
+    date: "",
+    summary: "",
+    url: defaultUrl,
+};
+
+// --- Aggregate Sections ---
+
+export const sectionSchema = z.object({
+    name: z.string(),
+    columns: z.number().min(1).max(5).default(1),
+    separateLinks: z.boolean().default(true),
+    visible: z.boolean().default(true),
+});
+
+export const customSchema = sectionSchema.extend({
+    id: idSchema,
+    items: z.array(customSectionSchema),
+});
+
+export const sectionsSchema = z.object({
+    summary: sectionSchema.extend({
+        id: z.literal("summary"),
+        content: z.string().default(""),
+    }),
+    awards: sectionSchema.extend({
+        id: z.literal("awards"),
+        items: z.array(awardSchema),
+    }),
+    certifications: sectionSchema.extend({
+        id: z.literal("certifications"),
+        items: z.array(certificationSchema),
+    }),
+    education: sectionSchema.extend({
+        id: z.literal("education"),
+        items: z.array(educationSchema),
+    }),
+    experience: sectionSchema.extend({
+        id: z.literal("experience"),
+        items: z.array(experienceSchema),
+    }),
+    volunteer: sectionSchema.extend({
+        id: z.literal("volunteer"),
+        items: z.array(volunteerSchema),
+    }),
+    interests: sectionSchema.extend({
+        id: z.literal("interests"),
+        items: z.array(interestSchema),
+    }),
+    languages: sectionSchema.extend({
+        id: z.literal("languages"),
+        items: z.array(languageSchema),
+    }),
+    profiles: sectionSchema.extend({
+        id: z.literal("profiles"),
+        items: z.array(profileSchema),
+    }),
+    projects: sectionSchema.extend({
+        id: z.literal("projects"),
+        items: z.array(projectSchema),
+    }),
+    publications: sectionSchema.extend({
+        id: z.literal("publications"),
+        items: z.array(publicationSchema),
+    }),
+    references: sectionSchema.extend({
+        id: z.literal("references"),
+        items: z.array(referenceSchema),
+    }),
+    skills: sectionSchema.extend({
+        id: z.literal("skills"),
+        items: z.array(skillSchema),
+    }),
+    custom: z.record(z.string(), customSchema),
+});
+
+export type Section = z.infer<typeof sectionSchema>;
+export type Sections = z.infer<typeof sectionsSchema>;
+
+export type SectionKey = "basics" | keyof Sections | `custom.${string}`;
+export type SectionWithItem<T = unknown> = Sections[FilterKeys<Sections, { items: T[] }>];
+export type SectionItem = SectionWithItem["items"][number];
+export type CustomSectionGroup = z.infer<typeof customSchema>;
+
+export const defaultSection: Section = {
+    name: "",
+    columns: 1,
+    separateLinks: true,
+    visible: true,
+};
+
+export const defaultSections: Sections = {
+    summary: { ...defaultSection, id: "summary", name: "Summary", content: "" },
+    awards: { ...defaultSection, id: "awards", name: "Awards", items: [] },
+    certifications: { ...defaultSection, id: "certifications", name: "Certifications", items: [] },
+    education: { ...defaultSection, id: "education", name: "Education", items: [] },
+    experience: { ...defaultSection, id: "experience", name: "Experience", items: [] },
+    volunteer: { ...defaultSection, id: "volunteer", name: "Volunteering", items: [] },
+    interests: { ...defaultSection, id: "interests", name: "Interests", items: [] },
+    languages: { ...defaultSection, id: "languages", name: "Languages", items: [] },
+    profiles: { ...defaultSection, id: "profiles", name: "Profiles", items: [] },
+    projects: { ...defaultSection, id: "projects", name: "Projects", items: [] },
+    publications: { ...defaultSection, id: "publications", name: "Publications", items: [] },
+    references: { ...defaultSection, id: "references", name: "References", items: [] },
+    skills: { ...defaultSection, id: "skills", name: "Skills", items: [] },
+    custom: {},
+};
+
+// --- Main Resume Data ---
 
 export const resumeDataSchema = z.object({
-    picture: pictureSchema.describe("Configuration for photograph displayed on the resume"),
-    basics: basicsSchema.describe(
-        "Basic information about the author, such as name, email, phone, location, and website",
-    ),
-    summary: summarySchema.describe("Summary section of the resume, useful for a short bio or introduction"),
-    sections: sectionsSchema.describe("Various sections of the resume, such as experience, education, projects, etc."),
-    customSections: customSectionsSchema.describe(
-        "Custom sections of the resume, such as a custom section for notes, etc.",
-    ),
-    metadata: metadataSchema.describe(
-        "Metadata for the resume, such as template, layout, typography, etc. This section describes the overall design and appearance of the resume.",
-    ),
+    basics: basicsSchema,
+    sections: sectionsSchema,
+    metadata: metadataSchema,
 });
 
 export type ResumeData = z.infer<typeof resumeDataSchema>;
+
+export const defaultResumeData: ResumeData = {
+    basics: defaultBasics,
+    sections: defaultSections,
+    metadata: defaultMetadata,
+};
+
+// --- Sample Data ---
+
+export const sampleResume: ResumeData = {
+    basics: {
+        name: "John Doe",
+        headline: "Creative and Innovative Web Developer",
+        email: "john.doe@gmail.com",
+        phone: "(555) 123-4567",
+        location: "Pleasantville, CA 94588",
+        url: {
+            label: "",
+            href: "https://johndoe.me/",
+        },
+        customFields: [],
+        picture: {
+            url: "https://i.imgur.com/HgwyOuJ.jpg",
+            size: 120,
+            aspectRatio: 1,
+            borderRadius: 0,
+            effects: {
+                hidden: false,
+                border: false,
+                grayscale: false,
+            },
+        },
+    },
+    sections: {
+        summary: {
+            name: "Summary",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "summary",
+            content:
+                "<p>Innovative Web Developer with 5 years of experience in building impactful and user-friendly websites and applications. Specializes in <strong>front-end technologies</strong> and passionate about modern web standards and cutting-edge development techniques. Proven track record of leading successful projects from concept to deployment.</p>",
+        },
+        awards: {
+            name: "Awards",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "awards",
+            items: [],
+        },
+        certifications: {
+            name: "Certifications",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "certifications",
+            items: [
+                {
+                    id: "spdhh9rrqi1gvj0yqnbqunlo",
+                    visible: true,
+                    name: "Full-Stack Web Development",
+                    issuer: "CodeAcademy",
+                    date: "2020",
+                    summary: "",
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+                {
+                    id: "n838rddyqv47zexn6cxauwqp",
+                    visible: true,
+                    name: "AWS Certified Developer",
+                    issuer: "Amazon Web Services",
+                    date: "2019",
+                    summary: "",
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+            ],
+        },
+        education: {
+            name: "Education",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "education",
+            items: [
+                {
+                    id: "yo3p200zo45c6cdqc6a2vtt3",
+                    visible: true,
+                    institution: "University of California",
+                    studyType: "Bachelor's in Computer Science",
+                    area: "Berkeley, CA",
+                    score: "",
+                    date: "August 2012 to May 2016",
+                    summary: "",
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+            ],
+        },
+        experience: {
+            name: "Experience",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "experience",
+            items: [
+                {
+                    id: "lhw25d7gf32wgdfpsktf6e0x",
+                    visible: true,
+                    company: "Creative Solutions Inc.",
+                    position: "Senior Web Developer",
+                    location: "San Francisco, CA",
+                    date: "January 2019 to Present",
+                    summary:
+                        "<ul><li><p>Spearheaded the redesign of the main product website, resulting in a 40% increase in user engagement.</p></li><li><p>Developed and implemented a new responsive framework, improving cross-device compatibility.</p></li><li><p>Mentored a team of four junior developers, fostering a culture of technical excellence.</p></li></ul>",
+                    url: {
+                        label: "",
+                        href: "https://creativesolutions.inc/",
+                    },
+                },
+                {
+                    id: "r6543lil53ntrxmvel53gbtm",
+                    visible: true,
+                    company: "TechAdvancers",
+                    position: "Web Developer",
+                    location: "San Jose, CA",
+                    date: "June 2016 to December 2018",
+                    summary:
+                        "<ul><li><p>Collaborated in a team of 10 to develop high-quality web applications using React.js and Node.js.</p></li><li><p>Managed the integration of third-party services such as Stripe for payments and Twilio for SMS services.</p></li><li><p>Optimized application performance, achieving a 30% reduction in load times.</p></li></ul>",
+                    url: {
+                        label: "",
+                        href: "https://techadvancers.com/",
+                    },
+                },
+            ],
+        },
+        volunteer: {
+            name: "Volunteering",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "volunteer",
+            items: [],
+        },
+        interests: {
+            name: "Interests",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "interests",
+            items: [],
+        },
+        languages: {
+            name: "Languages",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "languages",
+            items: [],
+        },
+        profiles: {
+            name: "Profiles",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "profiles",
+            items: [
+                {
+                    id: "cnbk5f0aeqvhx69ebk7hktwd",
+                    visible: true,
+                    network: "LinkedIn",
+                    username: "johndoe",
+                    icon: "linkedin",
+                    url: {
+                        label: "",
+                        href: "https://linkedin.com/in/johndoe",
+                    },
+                },
+                {
+                    id: "ukl0uecvzkgm27mlye0wazlb",
+                    visible: true,
+                    network: "GitHub",
+                    username: "johndoe",
+                    icon: "github",
+                    url: {
+                        label: "",
+                        href: "https://github.com/johndoe",
+                    },
+                },
+            ],
+        },
+        projects: {
+            name: "Projects",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "projects",
+            items: [
+                {
+                    id: "yw843emozcth8s1ubi1ubvlf",
+                    visible: true,
+                    name: "E-Commerce Platform",
+                    description: "Project Lead",
+                    date: "",
+                    summary:
+                        "<p>Led the development of a full-stack e-commerce platform, improving sales conversion by 25%.</p>",
+                    keywords: [],
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+                {
+                    id: "ncxgdjjky54gh59iz2t1xi1v",
+                    visible: true,
+                    name: "Interactive Dashboard",
+                    description: "Frontend Developer",
+                    date: "",
+                    summary:
+                        "<p>Created an interactive analytics dashboard for a SaaS application, enhancing data visualization for clients.</p>",
+                    keywords: [],
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+            ],
+        },
+        publications: {
+            name: "Publications",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "publications",
+            items: [],
+        },
+        references: {
+            name: "References",
+            columns: 1,
+            separateLinks: true,
+            visible: false,
+            id: "references",
+            items: [
+                {
+                    id: "f2sv5z0cce6ztjl87yuk8fak",
+                    visible: true,
+                    name: "Available upon request",
+                    description: "",
+                    summary: "",
+                    url: {
+                        label: "",
+                        href: "",
+                    },
+                },
+            ],
+        },
+        skills: {
+            name: "Skills",
+            columns: 1,
+            separateLinks: true,
+            visible: true,
+            id: "skills",
+            items: [
+                {
+                    id: "hn0keriukh6c0ojktl9gsgjm",
+                    visible: true,
+                    name: "Web Technologies",
+                    description: "Advanced",
+                    level: 0,
+                    keywords: ["HTML5", "JavaScript", "PHP", "Python"],
+                },
+                {
+                    id: "r8c3y47vykausqrgmzwg5pur",
+                    visible: true,
+                    name: "Web Frameworks",
+                    description: "Intermediate",
+                    level: 0,
+                    keywords: ["React.js", "Angular", "Vue.js", "Laravel", "Django"],
+                },
+                {
+                    id: "b5l75aseexqv17quvqgh73fe",
+                    visible: true,
+                    name: "Tools",
+                    description: "Intermediate",
+                    level: 0,
+                    keywords: ["Webpack", "Git", "Jenkins", "Docker", "JIRA"],
+                },
+            ],
+        },
+        custom: {},
+    },
+    metadata: {
+        template: "glalie",
+        layout: [
+            [
+                ["summary", "experience", "education", "projects", "references"],
+                [
+                    "profiles",
+                    "skills",
+                    "certifications",
+                    "interests",
+                    "languages",
+                    "awards",
+                    "volunteer",
+                    "publications",
+                ],
+            ],
+        ],
+        css: {
+            value: "* {\n\toutline: 1px solid #000;\n\toutline-offset: 4px;\n}",
+            visible: false,
+        },
+        page: {
+            margin: 14,
+            format: "a4",
+            options: {
+                breakLine: true,
+                pageNumbers: true,
+            },
+        },
+        theme: {
+            background: "#ffffff",
+            text: "#000000",
+            primary: "#ca8a04",
+        },
+        typography: {
+            font: {
+                family: "Merriweather",
+                subset: "latin",
+                variants: ["regular"],
+                size: 13,
+            },
+            lineHeight: 1.75,
+            hideIcons: false,
+            underlineLinks: true,
+        },
+        notes: "",
+    },
+};

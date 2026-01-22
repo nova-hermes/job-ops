@@ -50,6 +50,8 @@ export interface Job {
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null;            // Path to generated PDF
   notionPageId: string | null;       // Notion page ID if synced
+  sponsorMatchScore: number | null;  // 0-100 fuzzy match score with visa sponsors
+  sponsorMatchNames: string | null;  // JSON array of matched sponsor names (when 100% matches or top match)
 
   // JobSpy fields (nullable for non-JobSpy sources)
   jobType: string | null;
@@ -164,6 +166,8 @@ export interface UpdateJobInput {
   pdfPath?: string;
   notionPageId?: string;
   appliedAt?: string;
+  sponsorMatchScore?: number;
+  sponsorMatchNames?: string;
 }
 
 export interface PipelineConfig {
@@ -264,6 +268,79 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
+export interface ResumeProfile {
+  basics?: {
+    name?: string;
+    label?: string;
+    image?: string;
+    email?: string;
+    phone?: string;
+    url?: string;
+    summary?: string;
+    headline?: string;
+    location?: {
+      address?: string;
+      postalCode?: string;
+      city?: string;
+      countryCode?: string;
+      region?: string;
+    };
+    profiles?: Array<{
+      network?: string;
+      username?: string;
+      url?: string;
+    }>;
+  };
+  sections?: {
+    summary?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      content?: string;
+    };
+    skills?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        name: string;
+        description: string;
+        level: number;
+        keywords: string[];
+        visible: boolean;
+      }>;
+    };
+    projects?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        name: string;
+        description: string;
+        date: string;
+        summary: string;
+        visible: boolean;
+        keywords?: string[];
+        url?: string;
+      }>;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+export interface ProfileStatusResponse {
+  exists: boolean;
+  error: string | null;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  message: string | null;
+}
+
 export interface AppSettings {
   model: string;
   defaultModel: string;
@@ -313,6 +390,16 @@ export interface AppSettings {
   jobspyLinkedinFetchDescription: boolean;
   defaultJobspyLinkedinFetchDescription: boolean;
   overrideJobspyLinkedinFetchDescription: boolean | null;
-  rxResumeBaseResumeId: string | null;
-  hasRxResumeApiKey: boolean;
+  showSponsorInfo: boolean;
+  defaultShowSponsorInfo: boolean;
+  overrideShowSponsorInfo: boolean | null;
+  openrouterApiKeyHint: string | null;
+  rxresumeEmail: string | null;
+  rxresumePasswordHint: string | null;
+  basicAuthUser: string | null;
+  basicAuthPasswordHint: string | null;
+  ukvisajobsEmail: string | null;
+  ukvisajobsPasswordHint: string | null;
+  webhookSecretHint: string | null;
+  basicAuthActive: boolean;
 }

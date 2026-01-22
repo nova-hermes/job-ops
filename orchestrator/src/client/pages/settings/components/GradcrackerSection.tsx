@@ -1,26 +1,25 @@
 import React from "react"
+import { useFormContext, Controller } from "react-hook-form"
 
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { UpdateSettingsInput } from "@shared/settings-schema"
+import type { NumericSettingValues } from "@client/pages/settings/types"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
 
 type GradcrackerSectionProps = {
-  gradcrackerMaxJobsPerTermDraft: number | null
-  setGradcrackerMaxJobsPerTermDraft: (value: number | null) => void
-  defaultGradcrackerMaxJobsPerTerm: number
-  effectiveGradcrackerMaxJobsPerTerm: number
+  values: NumericSettingValues
   isLoading: boolean
   isSaving: boolean
 }
 
 export const GradcrackerSection: React.FC<GradcrackerSectionProps> = ({
-  gradcrackerMaxJobsPerTermDraft,
-  setGradcrackerMaxJobsPerTermDraft,
-  defaultGradcrackerMaxJobsPerTerm,
-  effectiveGradcrackerMaxJobsPerTerm,
+  values,
   isLoading,
   isSaving,
 }) => {
+  const { effective: effectiveGradcrackerMaxJobsPerTerm, default: defaultGradcrackerMaxJobsPerTerm } = values
+  const { control, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+
   return (
     <AccordionItem value="gradcracker" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
@@ -28,41 +27,35 @@ export const GradcrackerSection: React.FC<GradcrackerSectionProps> = ({
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Max jobs per search term</div>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={1000}
-              value={gradcrackerMaxJobsPerTermDraft ?? defaultGradcrackerMaxJobsPerTerm}
-              onChange={(event) => {
-                const value = parseInt(event.target.value, 10)
-                if (Number.isNaN(value)) {
-                  setGradcrackerMaxJobsPerTermDraft(null)
-                } else {
-                  setGradcrackerMaxJobsPerTermDraft(Math.min(1000, Math.max(1, value)))
-                }
-              }}
-              disabled={isLoading || isSaving}
-            />
-            <div className="text-xs text-muted-foreground">
-              Maximum number of jobs to fetch for EACH search term from Gradcracker. Range: 1-1000.
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <div>
-              <div className="text-xs text-muted-foreground">Effective</div>
-              <div className="break-words font-mono text-xs">{effectiveGradcrackerMaxJobsPerTerm}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Default</div>
-              <div className="break-words font-mono text-xs font-semibold">{defaultGradcrackerMaxJobsPerTerm}</div>
-            </div>
-          </div>
+          <Controller
+            name="gradcrackerMaxJobsPerTerm"
+            control={control}
+            render={({ field }) => (
+              <SettingsInput
+                label="Max jobs per search term"
+                type="number"
+                inputProps={{
+                  ...field,
+                  inputMode: "numeric",
+                  min: 1,
+                  max: 1000,
+                  value: field.value ?? defaultGradcrackerMaxJobsPerTerm,
+                  onChange: (event) => {
+                    const value = parseInt(event.target.value, 10)
+                    if (Number.isNaN(value)) {
+                      field.onChange(null)
+                    } else {
+                      field.onChange(Math.min(1000, Math.max(1, value)))
+                    }
+                  },
+                }}
+                disabled={isLoading || isSaving}
+                error={errors.gradcrackerMaxJobsPerTerm?.message as string | undefined}
+                helper={`Maximum number of jobs to fetch for EACH search term from Gradcracker. Default: ${defaultGradcrackerMaxJobsPerTerm}. Range: 1-1000.`}
+                current={String(effectiveGradcrackerMaxJobsPerTerm)}
+              />
+            )}
+          />
         </div>
       </AccordionContent>
     </AccordionItem>

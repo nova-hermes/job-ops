@@ -16,7 +16,7 @@ import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import type { JobStatus } from "@shared/types"
-import { ALL_JOB_STATUSES, STATUS_DESCRIPTIONS } from "../constants"
+import { ALL_JOB_STATUSES, STATUS_DESCRIPTIONS } from "@client/pages/settings/constants"
 
 type DangerZoneSectionProps = {
   statusesToClear: JobStatus[]

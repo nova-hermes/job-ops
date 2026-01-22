@@ -30,6 +30,7 @@ import { copyTextToClipboard, formatJobForWebhook, safeFilenamePart, stripHtml }
 import { DiscoveredPanel, FitAssessment, JobHeader, TailoredSummary } from "../../components";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
+import { useProfile } from "../../hooks/useProfile";
 import * as api from "../../api";
 import type { Job } from "../../../shared/types";
 import type { FilterTab } from "./constants";
@@ -58,6 +59,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
   const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
+
+  const { personName } = useProfile();
 
   useEffect(() => {
     setHasUnsavedTailoring(false);
@@ -243,17 +246,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         job={selectedJob}
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
-        onEditTailoring={() => {
-          onSetActiveTab("discovered");
-          setTimeout(() => setDetailTab("tailoring"), 50);
-        }}
-        onEditDescription={() => {
-          onSetActiveTab("discovered");
-          setTimeout(() => {
-            setDetailTab("description");
-            setIsEditingDescription(true);
-          }, 50);
-        }}
       />
     );
   }
@@ -269,7 +261,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   return (
     <div className="space-y-3">
-      <JobHeader job={selectedJob} />
+      <JobHeader
+        job={selectedJob}
+        onCheckSponsor={async () => {
+          await api.checkSponsor(selectedJob.id);
+          await onJobUpdated();
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-1.5">
         <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5 text-xs">
@@ -368,7 +366,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DropdownMenuItem asChild>
                   <a
                     href={selectedPdfHref}
-                    download={`Shaheer_Sarfaraz_${safeFilenamePart(selectedJob.employer)}.pdf`}
+                    download={`${personName.replace(/\s+/g, '_')}_${safeFilenamePart(selectedJob.employer)}.pdf`}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Download PDF

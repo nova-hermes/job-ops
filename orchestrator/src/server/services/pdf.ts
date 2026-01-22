@@ -1,18 +1,21 @@
 /**
- * Service for generating PDF resumes using Reactive Resume API.
+ * Service for generating PDF resumes using RxResume automation.
  */
 
 import { join } from 'path';
-import { writeFile, mkdir, access } from 'fs/promises';
+import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { existsSync } from 'fs';
+import { spawn } from 'child_process';
+import { createId } from '@paralleldrive/cuid2';
 
 import { getSetting } from '../repositories/settings.js';
 import { pickProjectIdsForJob } from './projectSelection.js';
 import { extractProjectsFromProfile, resolveResumeProjectsSettings } from './resumeProjects.js';
 import { getDataDir } from '../config/dataDir.js';
-import { getResume, importResume, exportResumePdf, deleteResume } from './rxresume.js';
+import { getProfile } from './profile.js';
 
 const OUTPUT_DIR = join(getDataDir(), 'pdfs');
+const RESUME_GEN_DIR = process.env.RESUME_GEN_DIR || join(getDataDir(), '..', 'resume-generator');
 
 export interface PdfResult {
   success: boolean;
@@ -23,90 +26,100 @@ export interface PdfResult {
 export interface TailoredPdfContent {
   summary?: string | null;
   headline?: string | null;
-  skills?: any | null;  // Accept any for flexibility, expected to be items array or parsed JSON
+  skills?: any | null; // Accept any for flexibility, expected to be items array or parsed JSON
 }
 
 /**
- * Generate a tailored PDF resume for a job using Reactive Resume API.
+ * Generate a tailored PDF resume for a job using RxResume automation.
  */
 export async function generatePdf(
   jobId: string,
   tailoredContent: TailoredPdfContent,
   jobDescription: string,
-  _baseResumePath?: string, // Deprecated/ignored when using API
+  baseResumePath?: string,
   selectedProjectIds?: string | null
 ): Promise<PdfResult> {
-  console.log(`📄 Generating PDF for job ${jobId} using Reactive Resume API...`);
-
-  let tempResumeId: string | null = null;
+  console.log(`📄 Generating PDF for job ${jobId}...`);
 
   try {
-    // 1. Get base resume ID from settings
-    const baseResumeId = await getSetting('rxResumeBaseResumeId');
-    if (!baseResumeId) {
-      throw new Error('rxResumeBaseResumeId not configured in settings. Please select a base resume in settings first.');
-    }
-
     // Ensure output directory exists
     if (!existsSync(OUTPUT_DIR)) {
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    // 2. Fetch base resume data
-    console.log(`   Fetching base resume ${baseResumeId}...`);
-    const baseResumeResponse = await getResume(baseResumeId);
-    const resumeData = baseResumeResponse.data;
+    // Read base resume
+    const baseResume = baseResumePath
+      ? JSON.parse(await readFile(baseResumePath, 'utf-8'))
+      : JSON.parse(JSON.stringify(await getProfile()));
 
-    // 3. Apply tailoring
+    // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
+    // This fixes issues where the base JSON uses a shorthand format (missing required fields)
+    if (baseResume.sections?.skills?.items && Array.isArray(baseResume.sections.skills.items)) {
+      baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any) => ({
+        ...skill,
+        id: skill.id || createId(),
+        visible: skill.visible ?? true,
+        // Zod schema requires string, default to empty string if missing
+        description: skill.description ?? '',
+        level: skill.level ?? 1,
+        keywords: skill.keywords || [],
+      }));
+    }
 
     // Inject tailored summary
     if (tailoredContent.summary) {
-      if (resumeData.sections?.summary) {
-        resumeData.sections.summary.content = tailoredContent.summary;
-      } else if (resumeData.basics?.summary) {
-        resumeData.basics.summary = tailoredContent.summary;
+      if (baseResume.sections?.summary) {
+        baseResume.sections.summary.content = tailoredContent.summary;
+      } else if (baseResume.basics?.summary) {
+        baseResume.basics.summary = tailoredContent.summary;
       }
     }
 
     // Inject tailored headline
     if (tailoredContent.headline) {
-      if (resumeData.basics) {
-        resumeData.basics.headline = tailoredContent.headline;
-        resumeData.basics.label = tailoredContent.headline;
+      if (baseResume.basics) {
+        baseResume.basics.headline = tailoredContent.headline;
+        baseResume.basics.label = tailoredContent.headline;
       }
     }
 
     // Inject tailored skills
     if (tailoredContent.skills) {
-      const rawSkills = Array.isArray(tailoredContent.skills)
+      const newSkills = Array.isArray(tailoredContent.skills)
         ? tailoredContent.skills
         : typeof tailoredContent.skills === 'string'
           ? JSON.parse(tailoredContent.skills)
           : null;
 
-      if (rawSkills && resumeData.sections?.skills) {
-        // Ensure each skill item has all required fields per OpenAPI spec
-        const normalizedSkills = rawSkills.map((skill: any, index: number) => ({
-          id: skill.id || `skill-${index}-${Date.now()}`,
-          hidden: skill.hidden ?? false,
-          icon: skill.icon || '',
-          name: skill.name || '',
-          proficiency: skill.proficiency || '',
-          level: skill.level ?? 0,
-          keywords: Array.isArray(skill.keywords) ? skill.keywords : [],
-        }));
-        resumeData.sections.skills.items = normalizedSkills;
+      if (newSkills && baseResume.sections?.skills) {
+        // Ensure each skill item has required schema fields
+        const existingSkills = baseResume.sections.skills.items || [];
+        const skillsWithSchema = newSkills.map((newSkill: any) => {
+          // Try to find matching existing skill to preserve id and other fields
+          const existing = existingSkills.find((s: any) => s.name === newSkill.name);
+
+          return {
+            id: newSkill.id || existing?.id || createId(),
+            visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
+            name: newSkill.name || existing?.name || '',
+            description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
+            level: newSkill.level !== undefined ? newSkill.level : (existing?.level ?? 1),
+            keywords: newSkill.keywords || existing?.keywords || [],
+          };
+        });
+
+        baseResume.sections.skills.items = skillsWithSchema;
       }
     }
 
-    // 4. Select projects and set visibility
+    // Select projects and set visibility
     try {
       let selectedSet: Set<string>;
 
       if (selectedProjectIds) {
         selectedSet = new Set(selectedProjectIds.split(',').map(s => s.trim()).filter(Boolean));
       } else {
-        const { catalog, selectionItems } = extractProjectsFromProfile(resumeData);
+        const { catalog, selectionItems } = extractProjectsFromProfile(baseResume);
         const overrideResumeProjectsRaw = await getSetting('resumeProjects');
         const { resumeProjects } = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
 
@@ -124,7 +137,7 @@ export async function generatePdf(
         selectedSet = new Set([...locked, ...picked]);
       }
 
-      const projectsSection = resumeData.sections?.projects;
+      const projectsSection = baseResume.sections?.projects;
       const projectItems = projectsSection?.items;
       if (Array.isArray(projectItems)) {
         for (const item of projectItems) {
@@ -139,41 +152,23 @@ export async function generatePdf(
       console.warn(`   ⚠️ Project visibility step failed for job ${jobId}:`, err);
     }
 
-    // 5. Import as temporary resume
-    console.log(`   Importing temporary resume for job ${jobId}...`);
-    const timestamp = new Date().getTime();
-    const tempName = `[TEMP] ${resumeData.basics?.name || 'Resume'} - ${jobId.slice(0, 8)} (${timestamp})`;
+    // Write modified resume to temp file
+    const tempResumePath = join(RESUME_GEN_DIR, `temp_resume_${jobId}.json`);
+    await writeFile(tempResumePath, JSON.stringify(baseResume, null, 2));
 
-    tempResumeId = await importResume({
-      name: tempName,
-      slug: `temp-${jobId}-${timestamp}`,
-      data: resumeData,
-    });
-
-    if (!tempResumeId) {
-      throw new Error('Failed to get ID for imported resume');
-    }
-
-    // 6. Export as PDF
-    console.log(`   Printing PDF...`);
-    const pdfUrl = await exportResumePdf(tempResumeId);
-
-    if (!pdfUrl) {
-      throw new Error('Reactive Resume did not return a PDF URL');
-    }
-
-    // 7. Download PDF
+    // Generate PDF using Python script - output directly to our data folder
     const outputFilename = `resume_${jobId}.pdf`;
     const outputPath = join(OUTPUT_DIR, outputFilename);
 
-    console.log(`   Downloading PDF from ${pdfUrl}...`);
-    const pdfResponse = await fetch(pdfUrl);
-    if (!pdfResponse.ok) {
-      throw new Error(`Failed to download PDF (${pdfResponse.status}): ${pdfResponse.statusText}`);
-    }
+    await runPythonPdfGenerator(tempResumePath, outputFilename, OUTPUT_DIR);
 
-    const buffer = await pdfResponse.arrayBuffer();
-    await writeFile(outputPath, Buffer.from(buffer));
+    // Cleanup temp file
+    try {
+      const { unlink } = await import('fs/promises');
+      await unlink(tempResumePath);
+    } catch {
+      // Ignore cleanup errors
+    }
 
     console.log(`✅ PDF generated: ${outputPath}`);
 
@@ -182,17 +177,42 @@ export async function generatePdf(
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`❌ PDF generation failed: ${message}`);
     return { success: false, error: message };
-  } finally {
-    // 8. Cleanup temp resume
-    if (tempResumeId) {
-      try {
-        console.log(`   Cleaning up temporary resume ${tempResumeId}...`);
-        await deleteResume(tempResumeId);
-      } catch (cleanupError) {
-        console.warn(`   ⚠️ Failed to delete temporary resume ${tempResumeId}:`, cleanupError);
-      }
-    }
   }
+}
+
+/**
+ * Run the Python RXResume automation script.
+ */
+async function runPythonPdfGenerator(
+  jsonPath: string,
+  outputFilename: string,
+  outputDir: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Use the virtual environment's Python (or system python in Docker)
+    const pythonPath = process.env.PYTHON_PATH || join(RESUME_GEN_DIR, '.venv', 'bin', 'python');
+
+    const child = spawn(pythonPath, ['rxresume_automation.py'], {
+      cwd: RESUME_GEN_DIR,
+      env: {
+        ...process.env,
+        RESUME_JSON_PATH: jsonPath,
+        OUTPUT_FILENAME: outputFilename,
+        OUTPUT_DIR: outputDir,
+      },
+      stdio: 'inherit',
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Python script exited with code ${code}`));
+      }
+    });
+
+    child.on('error', reject);
+  });
 }
 
 /**

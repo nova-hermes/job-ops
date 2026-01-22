@@ -31,6 +31,9 @@ vi.mock("../../components", () => ({
   DiscoveredPanel: ({ job }: { job: Job | null }) => (
     <div data-testid="discovered-panel">{job?.id ?? "no-job"}</div>
   ),
+  JobHeader: () => <div data-testid="job-header" />,
+  FitAssessment: () => <div data-testid="fit-assessment" />,
+  TailoredSummary: () => <div data-testid="tailored-summary" />,
 }));
 
 vi.mock("../../components/ReadyPanel", () => ({
@@ -63,6 +66,7 @@ vi.mock("../../api", () => ({
   generateJobPdf: vi.fn(),
   markAsApplied: vi.fn(),
   skipJob: vi.fn(),
+  getProfile: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("sonner", () => ({
@@ -100,6 +104,8 @@ const createJob = (overrides: Partial<Job> = {}): Job => ({
   selectedProjectIds: null,
   pdfPath: null,
   notionPageId: null,
+  sponsorMatchScore: null,
+  sponsorMatchNames: null,
   jobType: null,
   salarySource: null,
   salaryInterval: null,
@@ -154,23 +160,7 @@ describe("JobDetailPanel", () => {
     expect(screen.getByTestId("discovered-panel")).toHaveTextContent("job-99");
   });
 
-  it("wires ready panel edit actions back to the page", () => {
-    const onSetActiveTab = vi.fn();
 
-    render(
-      <JobDetailPanel
-        activeTab="ready"
-        activeJobs={[]}
-        selectedJob={createJob({ status: "ready" })}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={vi.fn().mockResolvedValue(undefined)}
-        onSetActiveTab={onSetActiveTab}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /edit description/i }));
-    expect(onSetActiveTab).toHaveBeenCalledWith("discovered");
-  });
 
   it("shows an empty state when no job is selected", () => {
     render(

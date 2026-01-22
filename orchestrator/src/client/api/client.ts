@@ -8,7 +8,6 @@ import type {
   JobsListResponse,
   PipelineStatusResponse,
   JobSource,
-  PipelineRun,
   AppSettings,
   ResumeProjectsSettings,
   ResumeProjectCatalogItem,
@@ -20,6 +19,9 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
   VisaSponsor,
+  ResumeProfile,
+  ProfileStatusResponse,
+  ValidationResult,
 } from '../../shared/types';
 import { trackEvent } from "@/lib/analytics";
 
@@ -82,6 +84,12 @@ export async function summarizeJob(id: string, options?: { force?: boolean }): P
 
 export async function generateJobPdf(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/generate-pdf`, {
+    method: 'POST',
+  });
+}
+
+export async function checkSponsor(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/check-sponsor`, {
     method: 'POST',
   });
 }
@@ -168,6 +176,38 @@ export async function getProfileProjects(): Promise<ResumeProjectCatalogItem[]> 
   return fetchApi<ResumeProjectCatalogItem[]>('/profile/projects');
 }
 
+export async function getProfile(): Promise<ResumeProfile> {
+  return fetchApi<ResumeProfile>('/profile');
+}
+
+export async function getProfileStatus(): Promise<ProfileStatusResponse> {
+  return fetchApi<ProfileStatusResponse>('/profile/status');
+}
+
+export async function uploadProfile(profile: ResumeProfile): Promise<ProfileStatusResponse> {
+  return fetchApi<ProfileStatusResponse>('/profile/upload', {
+    method: 'POST',
+    body: JSON.stringify({ profile }),
+  });
+}
+
+export async function validateOpenrouter(apiKey?: string): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/openrouter', {
+    method: 'POST',
+    body: JSON.stringify({ apiKey }),
+  });
+}
+
+export async function validateRxresume(email?: string, password?: string): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/rxresume', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function validateResumeJson(): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/resume');
+}
 
 export async function updateSettings(update: {
   model?: string | null
@@ -186,7 +226,15 @@ export async function updateSettings(update: {
   jobspyCountryIndeed?: string | null
   jobspySites?: string[] | null
   jobspyLinkedinFetchDescription?: boolean | null
-  rxResumeBaseResumeId?: string | null
+  showSponsorInfo?: boolean | null
+  openrouterApiKey?: string | null
+  rxresumeEmail?: string | null
+  rxresumePassword?: string | null
+  basicAuthUser?: string | null
+  basicAuthPassword?: string | null
+  ukvisajobsEmail?: string | null
+  ukvisajobsPassword?: string | null
+  webhookSecret?: string | null
 }): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {
     method: 'PATCH',

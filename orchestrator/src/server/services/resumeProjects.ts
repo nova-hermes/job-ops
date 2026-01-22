@@ -1,41 +1,6 @@
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-import { getSetting } from '../repositories/settings.js';
-import { getResume } from './rxresume.js';
 import type { ResumeProjectCatalogItem, ResumeProjectsSettings } from '../../shared/types.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-export const DEFAULT_RESUME_PROFILE_PATH =
-  process.env.RESUME_PROFILE_PATH || join(__dirname, '../../../../resume-generator/base.json');
-
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & { summaryText: string };
-
-export async function loadResumeProfile(profilePath: string = DEFAULT_RESUME_PROFILE_PATH): Promise<unknown> {
-  const rxResumeBaseResumeId = await getSetting('rxResumeBaseResumeId');
-
-  if (rxResumeBaseResumeId) {
-    try {
-      const resume = await getResume(rxResumeBaseResumeId);
-      return resume.data;
-    } catch (error) {
-      console.error(`❌ Failed to load resume from Reactive Resume (${rxResumeBaseResumeId}):`, error);
-      throw new Error(`Failed to load profile from Reactive Resume (ID: ${rxResumeBaseResumeId}). Please check your API key and connection.`);
-    }
-  }
-
-  // Fallback to local file
-  try {
-    const { readFile } = await import('fs/promises');
-    const content = await readFile(profilePath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.warn(`⚠️ No local profile found at ${profilePath} and no Reactive Resume base ID is configured. Reactive Resume integration is required for tailoring.`);
-    return {};
-  }
-}
-
 export function extractProjectsFromProfile(profile: unknown): {
   catalog: ResumeProjectCatalogItem[];
   selectionItems: ResumeProjectSelectionItem[];
@@ -78,7 +43,7 @@ export function buildDefaultResumeProjectsSettings(
     .filter((id) => !lockedSet.has(id));
 
   const total = catalog.length;
-  const preferredMax = Math.max(lockedProjectIds.length, 4);
+  const preferredMax = Math.max(lockedProjectIds.length, 3);
   const maxProjects = total === 0 ? 0 : Math.min(total, preferredMax);
 
   return normalizeResumeProjectsSettings(
@@ -181,4 +146,3 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 export type { ResumeProjectSelectionItem };
-

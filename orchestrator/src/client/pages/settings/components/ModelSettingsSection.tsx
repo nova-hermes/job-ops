@@ -1,44 +1,26 @@
 import React from "react"
+import { useFormContext } from "react-hook-form"
 
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { UpdateSettingsInput } from "@shared/settings-schema"
+import type { ModelValues } from "@client/pages/settings/types"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
 
 type ModelSettingsSectionProps = {
-  modelDraft: string
-  setModelDraft: (value: string) => void
-  modelScorerDraft: string
-  setModelScorerDraft: (value: string) => void
-  modelTailoringDraft: string
-  setModelTailoringDraft: (value: string) => void
-  modelProjectSelectionDraft: string
-  setModelProjectSelectionDraft: (value: string) => void
-  effectiveModel: string
-  effectiveModelScorer: string
-  effectiveModelTailoring: string
-  effectiveModelProjectSelection: string
-  defaultModel: string
+  values: ModelValues
   isLoading: boolean
   isSaving: boolean
 }
 
 export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
-  modelDraft,
-  setModelDraft,
-  modelScorerDraft,
-  setModelScorerDraft,
-  modelTailoringDraft,
-  setModelTailoringDraft,
-  modelProjectSelectionDraft,
-  setModelProjectSelectionDraft,
-  effectiveModel,
-  effectiveModelScorer,
-  effectiveModelTailoring,
-  effectiveModelProjectSelection,
-  defaultModel,
+  values,
   isLoading,
   isSaving,
 }) => {
+  const { effective, default: defaultModel, scorer, tailoring, projectSelection } = values
+  const { register, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+
   return (
     <AccordionItem value="model" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
@@ -46,18 +28,15 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Override model</div>
-            <Input
-              value={modelDraft}
-              onChange={(event) => setModelDraft(event.target.value)}
-              placeholder={defaultModel || "openai/gpt-4o-mini"}
-              disabled={isLoading || isSaving}
-            />
-            <div className="text-xs text-muted-foreground">
-              Leave blank to use the default from server env (`MODEL`).
-            </div>
-          </div>
+          <SettingsInput
+            label="Override model"
+            inputProps={register("model")}
+            placeholder={defaultModel || "google/gemini-3-flash-preview"}
+            disabled={isLoading || isSaving}
+            error={errors.model?.message as string | undefined}
+            helper="Leave blank to use the default from server env (`MODEL`)."
+            current={effective || "—"}
+          />
 
           <Separator />
 
@@ -65,44 +44,32 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
             <div className="text-sm font-medium">Task-Specific Overrides</div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2">
-                <div className="text-sm">Scoring Model</div>
-                <Input
-                  value={modelScorerDraft}
-                  onChange={(event) => setModelScorerDraft(event.target.value)}
-                  placeholder={effectiveModel || "inherit"}
-                  disabled={isLoading || isSaving}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Effective: <span className="font-mono">{effectiveModelScorer || effectiveModel}</span>
-                </div>
-              </div>
+              <SettingsInput
+                label="Scoring Model"
+                inputProps={register("modelScorer")}
+                placeholder={effective || "inherit"}
+                disabled={isLoading || isSaving}
+                error={errors.modelScorer?.message as string | undefined}
+                current={scorer || effective || "—"}
+              />
 
-              <div className="space-y-2">
-                <div className="text-sm">Tailoring Model</div>
-                <Input
-                  value={modelTailoringDraft}
-                  onChange={(event) => setModelTailoringDraft(event.target.value)}
-                  placeholder={effectiveModel || "inherit"}
-                  disabled={isLoading || isSaving}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Effective: <span className="font-mono">{effectiveModelTailoring || effectiveModel}</span>
-                </div>
-              </div>
+              <SettingsInput
+                label="Tailoring Model"
+                inputProps={register("modelTailoring")}
+                placeholder={effective || "inherit"}
+                disabled={isLoading || isSaving}
+                error={errors.modelTailoring?.message as string | undefined}
+                current={tailoring || effective || "—"}
+              />
 
-              <div className="space-y-2">
-                <div className="text-sm">Project Selection Model</div>
-                <Input
-                  value={modelProjectSelectionDraft}
-                  onChange={(event) => setModelProjectSelectionDraft(event.target.value)}
-                  placeholder={effectiveModel || "inherit"}
-                  disabled={isLoading || isSaving}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Effective: <span className="font-mono">{effectiveModelProjectSelection || effectiveModel}</span>
-                </div>
-              </div>
+              <SettingsInput
+                label="Project Selection Model"
+                inputProps={register("modelProjectSelection")}
+                placeholder={effective || "inherit"}
+                disabled={isLoading || isSaving}
+                error={errors.modelProjectSelection?.message as string | undefined}
+                current={projectSelection || effective || "—"}
+              />
             </div>
           </div>
 
@@ -111,7 +78,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <div className="text-xs text-muted-foreground">Global Effective</div>
-              <div className="break-words font-mono text-xs">{effectiveModel || "—"}</div>
+              <div className="break-words font-mono text-xs">{effective || "—"}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Default (env)</div>

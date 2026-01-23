@@ -30,7 +30,7 @@ vi.mock('../../repositories/settings.js', async (importOriginal) => {
 });
 
 import { getResume, RxResumeCredentialsError } from '../../services/rxresume-v4.js';
-import { getProfile, clearProfileCache } from '../../services/profile.js';
+import { getProfile } from '../../services/profile.js';
 import { getSetting } from '../../repositories/settings.js';
 
 describe.sequential('Profile API routes', () => {

@@ -31,10 +31,12 @@ orchestrator/
    ```
 
 2. **Set up environment:**
-   ```bash
-   cp .env.example .env
-   # The app is self-configuring. You can add keys via the UI Onboarding.
-   ```
+    ```bash
+    cp .env.example .env
+    # The app is self-configuring. You can add keys via the UI Onboarding.
+    ```
+
+   After the server starts, use the onboarding modal to connect OpenRouter, link your v4.rxresu.me account, and select a template resume.
 
 3. **Initialize database:**
    ```bash
@@ -46,7 +48,7 @@ orchestrator/
    npm run dev
    ```
 
-   This starts:
+    This starts:
    - Backend API at `http://localhost:3001`
    - Frontend at `http://localhost:5173`
 
@@ -119,5 +121,5 @@ npm start
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
 - **AI:** OpenRouter API (GPT-4o-mini)
-- **PDF Generation:** Wraps existing Python RXResume automation
+- **PDF Generation:** RxResume v4 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler

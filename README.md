@@ -6,7 +6,7 @@ AI-powered job discovery and application pipeline. Automatically finds jobs, sco
 1. **Search**: Scrapes Gradcracker, Indeed, LinkedIn, and UK Visa Sponsorship jobs.
 2. **Score**: AI ranks jobs by suitability using OpenRouter.
 3. **Tailor**: Generates a custom resume summary for top-tier matches.
-4. **Export**: Automates [RxResume](https://v4.rxresu.me) to create tailored PDFs.
+4. **Export**: Uses [RxResume v4](https://v4.rxresu.me) to create tailored PDFs.
 5. **Manage**: Review and mark jobs as "Applied" via the dashboard (syncs to Notion).
 
 ## Example of generating a tailored resume for a job
@@ -30,13 +30,12 @@ open http://localhost:3005
 
 The app will guide you through setup on first launch. The onboarding wizard helps you:
 - Connect your OpenRouter API key (for AI scoring/tailoring)
-- Add your RxResume credentials (for PDF export)
-- Upload your base resume JSON (exported from RxResume)
+- Add your RxResume credentials (for PDF export via v4.rxresu.me)
+- Select a template resume from your v4.rxresu.me account
 
 ## Structure
 - `/orchestrator`: React frontend + Node.js backend & pipeline.
 - `/extractors`: Specialized scrapers (Gradcracker, JobSpy, UKVisaJobs).
-- `/resume-generator`: Python script for RxResume PDF automation.
 - `/data`: Persistent storage for SQLite DB and generated PDFs.
 
 Technical breakdowns here: `documentation/extractors/README.md`
@@ -67,19 +66,6 @@ cd ../orchestrator
 cp .env.example .env
 npm run db:migrate
 npm run dev
-```
-
-Set up the resume generator (used for PDF export):
-
-```bash
-cd ../resume-generator
-python -m venv .venv
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# macOS/Linux:
-# source .venv/bin/activate
-pip install playwright
-python -m playwright install firefox
 ```
 
 Dev URLs:

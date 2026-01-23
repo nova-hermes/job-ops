@@ -38,7 +38,7 @@ Once a job is `ready`, the Ready panel is the "shipping lane":
 
 The PDF is generated from:
 
-- The base resume JSON (uploaded via the Onboarding UI or Settings).
+- The base resume selected from your v4.rxresu.me account (via Onboarding or Settings).
 - The job description (used for AI tailoring and project selection).
 - Your tailored summary/headline/skills and selected projects.
 

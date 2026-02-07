@@ -14,11 +14,13 @@ import * as api from "../api";
 import { ManualImportSheet } from "../components";
 import type { FilterTab, JobSort } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
+import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
+import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
@@ -184,6 +186,20 @@ export const OrchestratorPage: React.FC = () => {
         : null,
     [jobs, selectedJobId],
   );
+  const {
+    selectedJobIds,
+    canSkipSelected,
+    canMoveSelected,
+    bulkActionInFlight,
+    toggleSelectJob,
+    toggleSelectAll,
+    clearSelection,
+    runBulkAction,
+  } = useBulkJobSelection({
+    activeJobs,
+    activeTab,
+    loadJobs,
+  });
 
   useEffect(() => {
     if (isLoading || sourceFilter === "all") return;
@@ -335,9 +351,12 @@ export const OrchestratorPage: React.FC = () => {
               jobs={jobs}
               activeJobs={activeJobs}
               selectedJobId={selectedJobId}
+              selectedJobIds={selectedJobIds}
               activeTab={activeTab}
               searchQuery={searchQuery}
               onSelectJob={handleSelectJob}
+              onToggleSelectJob={toggleSelectJob}
+              onToggleSelectAll={toggleSelectAll}
             />
 
             {/* Inspector panel: visually subordinate to list */}
@@ -356,6 +375,16 @@ export const OrchestratorPage: React.FC = () => {
           </div>
         </section>
       </main>
+
+      <FloatingBulkActionsBar
+        selectedCount={selectedJobIds.size}
+        canMoveSelected={canMoveSelected}
+        canSkipSelected={canSkipSelected}
+        bulkActionInFlight={bulkActionInFlight !== null}
+        onMoveToReady={() => void runBulkAction("move_to_ready")}
+        onSkipSelected={() => void runBulkAction("skip")}
+        onClear={clearSelection}
+      />
 
       <ManualImportSheet
         open={isManualImportOpen}

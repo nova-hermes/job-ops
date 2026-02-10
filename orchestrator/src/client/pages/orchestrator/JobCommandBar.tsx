@@ -1,4 +1,4 @@
-import { isMetaKeyPressed } from "@client/lib/meta-key";
+import { useHotkeys } from "@client/hooks/useHotkeys";
 import type { JobListItem } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -33,6 +33,7 @@ interface JobCommandBarProps {
   onSelectJob: (tab: FilterTab, jobId: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  enabled?: boolean;
 }
 
 export const JobCommandBar: React.FC<JobCommandBarProps> = ({
@@ -40,6 +41,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   onSelectJob,
   open,
   onOpenChange,
+  enabled = true,
 }) => {
   const lockDialogAccentClass: Record<StatusLock, string> = {
     ready:
@@ -74,21 +76,19 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     setActiveLock(null);
   }, [setDialogOpen]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "k") return;
-      if (!isMetaKeyPressed(event)) return;
-      event.preventDefault();
-      if (isOpen) {
-        closeDialog();
-        return;
-      }
-      setDialogOpen(true);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeDialog, isOpen, setDialogOpen]);
+  useHotkeys(
+    {
+      "$mod+k": (event) => {
+        event.preventDefault();
+        if (isOpen) {
+          closeDialog();
+          return;
+        }
+        setDialogOpen(true);
+      },
+    },
+    { enabled },
+  );
 
   const normalizedQuery = query.trim().toLowerCase();
   const scopedJobs = useMemo(() => {

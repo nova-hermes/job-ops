@@ -39,13 +39,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn, copyTextToClipboard, formatJobForWebhook } from "@/lib/utils";
+import {
+  cn,
+  copyTextToClipboard,
+  formatJobForWebhook,
+  safeFilenamePart,
+} from "@/lib/utils";
 import * as api from "../api";
 import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import { TailorMode } from "./discovered-panel/TailorMode";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
+import { KbdHint } from "./KbdHint";
 
 type PanelMode = "ready" | "tailor";
 
@@ -55,9 +61,6 @@ interface ReadyPanelProps {
   onJobMoved: (jobId: string) => void;
   onTailoringDirtyChange?: (isDirty: boolean) => void;
 }
-
-const safeFilenamePart = (value: string | null | undefined) =>
-  (value || "Unknown").replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
 
 export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   job,
@@ -303,6 +306,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <a href={pdfHref} target="_blank" rel="noopener noreferrer">
               <FileText className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">View PDF</span>
+              <KbdHint shortcut="p" className="ml-auto" />
             </a>
           </Button>
 
@@ -314,10 +318,11 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           >
             <a
               href={pdfHref}
-              download={`${safeFilenamePart(personName)}_${safeFilenamePart(job.employer)}.pdf`}
+              download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.pdf`}
             >
               <Download className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Download PDF</span>
+              <KbdHint shortcut="d" className="ml-auto" />
             </a>
           </Button>
 
@@ -330,6 +335,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <a href={jobLink} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Open Job Listing</span>
+              <KbdHint shortcut="o" className="ml-auto" />
             </a>
           </Button>
 
@@ -346,6 +352,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <CheckCircle2 className="h-3.5 w-3.5" />
             )}
             <span className="truncate">Mark Applied</span>
+            <KbdHint shortcut="a" className="ml-auto" />
           </Button>
         </div>
       </div>

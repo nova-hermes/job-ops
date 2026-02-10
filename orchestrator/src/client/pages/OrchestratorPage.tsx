@@ -1,19 +1,26 @@
+import { useHotkeys } from "@client/hooks/useHotkeys";
+import { useProfile } from "@client/hooks/useProfile";
 import { useSettings } from "@client/hooks/useSettings";
+import { SHORTCUTS } from "@client/lib/shortcut-map";
 import {
   formatCountryLabel,
   getCompatibleSourcesForCountry,
 } from "@shared/location-support.js";
 import type { JobSource } from "@shared/types.js";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
+import { safeFilenamePart } from "@/lib/utils";
 import * as api from "../api";
+import { KeyboardShortcutBar } from "../components/KeyboardShortcutBar";
+import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
+import { tabs } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
@@ -86,8 +93,34 @@ export const OrchestratorPage: React.FC = () => {
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const shortcutActionInFlight = useRef(false);
+
+  const isAnyModalOpen =
+    isRunModeModalOpen ||
+    isCommandBarOpen ||
+    isFiltersOpen ||
+    isHelpDialogOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
+  const isAnyModalOpenExcludingCommandBar =
+    isRunModeModalOpen ||
+    isFiltersOpen ||
+    isHelpDialogOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
+  const isAnyModalOpenExcludingHelp =
+    isRunModeModalOpen ||
+    isCommandBarOpen ||
+    isFiltersOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -285,6 +318,227 @@ export const OrchestratorPage: React.FC = () => {
     onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
   });
 
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────
+  const { personName } = useProfile();
+
+  const navigateJobList = useCallback(
+    (direction: 1 | -1) => {
+      if (activeJobs.length === 0) return;
+      const currentIndex = selectedJobId
+        ? activeJobs.findIndex((j) => j.id === selectedJobId)
+        : -1;
+      const nextIndex = Math.max(
+        0,
+        Math.min(activeJobs.length - 1, currentIndex + direction),
+      );
+      const nextJob = activeJobs[nextIndex];
+      if (nextJob && nextJob.id !== selectedJobId) {
+        handleSelectJobId(nextJob.id);
+        requestScrollToJob(nextJob.id);
+      }
+    },
+    [activeJobs, selectedJobId, handleSelectJobId, requestScrollToJob],
+  );
+
+  const navigateTab = useCallback(
+    (direction: 1 | -1) => {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+      setActiveTab(tabs[nextIndex].id);
+    },
+    [activeTab, setActiveTab],
+  );
+
+  /**
+   * After a destructive/moving action (skip, mark-applied), auto-advance to
+   * the next job in the list -- mirroring handleJobMoved in JobDetailPanel.
+   */
+  const selectNextAfterAction = useCallback(
+    (movedJobId: string) => {
+      const idx = activeJobs.findIndex((j) => j.id === movedJobId);
+      const next = activeJobs[idx + 1] || activeJobs[idx - 1];
+      handleSelectJobId(next?.id ?? null);
+    },
+    [activeJobs, handleSelectJobId],
+  );
+
+  useHotkeys(
+    {
+      // ── Navigation ──────────────────────────────────────────────────────
+      [SHORTCUTS.nextJob.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(1);
+      },
+      [SHORTCUTS.nextJobArrow.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(1);
+      },
+      [SHORTCUTS.prevJob.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(-1);
+      },
+      [SHORTCUTS.prevJobArrow.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(-1);
+      },
+
+      // ── Tab switching ───────────────────────────────────────────────────
+      [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
+      [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
+      [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
+      [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
+      [SHORTCUTS.prevTabArrow.key]: (e) => {
+        e.preventDefault();
+        navigateTab(-1);
+      },
+      [SHORTCUTS.nextTabArrow.key]: (e) => {
+        e.preventDefault();
+        navigateTab(1);
+      },
+
+      // ── Context actions ─────────────────────────────────────────────────
+      [SHORTCUTS.skip.key]: () => {
+        if (!selectedJob) return;
+        if (!["discovered", "ready"].includes(activeTab)) return;
+        if (shortcutActionInFlight.current) return;
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+        api
+          .skipJob(jobId)
+          .then(async () => {
+            toast.message("Job skipped");
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : "Failed to skip job";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
+          });
+      },
+
+      [SHORTCUTS.markApplied.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        if (shortcutActionInFlight.current) return;
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+        api
+          .markAsApplied(jobId)
+          .then(async () => {
+            toast.success("Marked as applied", {
+              description: `${selectedJob.title} at ${selectedJob.employer}`,
+            });
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : "Failed to mark as applied";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
+          });
+      },
+
+      [SHORTCUTS.moveToReady.key]: () => {
+        if (activeTab !== "discovered") return;
+        if (shortcutActionInFlight.current) return;
+
+        // Bulk action takes precedence if selection exists
+        if (selectedJobIds.size > 0) {
+          void runBulkAction("move_to_ready");
+          return;
+        }
+
+        // Single action
+        if (!selectedJob) return;
+
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+
+        api
+          .processJob(jobId)
+          .then(async () => {
+            toast.success("Job moved to Ready", {
+              description: "Your tailored PDF has been generated.",
+            });
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error
+                ? err.message
+                : "Failed to move job to ready";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
+          });
+      },
+
+      [SHORTCUTS.viewPdf.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+        window.open(href, "_blank", "noopener,noreferrer");
+      },
+
+      [SHORTCUTS.downloadPdf.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`;
+        a.click();
+      },
+
+      [SHORTCUTS.openListing.key]: () => {
+        if (!selectedJob) return;
+        const link = selectedJob.applicationLink || selectedJob.jobUrl;
+        if (link) window.open(link, "_blank", "noopener,noreferrer");
+      },
+
+      [SHORTCUTS.toggleSelect.key]: () => {
+        if (!selectedJobId) return;
+        toggleSelectJob(selectedJobId);
+      },
+
+      [SHORTCUTS.clearSelection.key]: () => {
+        if (selectedJobIds.size > 0) clearSelection();
+      },
+    },
+    { enabled: !isAnyModalOpen },
+  );
+
+  useHotkeys(
+    {
+      // ── Search ──────────────────────────────────────────────────────────
+      [SHORTCUTS.searchSlash.key]: (e) => {
+        e.preventDefault();
+        setIsCommandBarOpen(true);
+      },
+    },
+    { enabled: !isAnyModalOpenExcludingCommandBar },
+  );
+
+  useHotkeys(
+    {
+      // ── Help ────────────────────────────────────────────────────────────
+      [SHORTCUTS.help.key]: (e) => {
+        e.preventDefault();
+        setIsHelpDialogOpen((prev) => !prev);
+      },
+    },
+    { enabled: !isAnyModalOpenExcludingHelp },
+  );
+
   const handleCommandSelectJob = useCallback(
     (targetTab: FilterTab, id: string) => {
       requestScrollToJob(id, { ensureSelected: true });
@@ -355,6 +609,13 @@ export const OrchestratorPage: React.FC = () => {
     }
   }, [isDesktop, isDetailDrawerOpen]);
 
+  useEffect(() => {
+    const hasSeen = localStorage.getItem("has-seen-keyboard-shortcuts");
+    if (!hasSeen) {
+      setIsHelpDialogOpen(true);
+    }
+  }, []);
+
   const onDrawerOpenChange = (open: boolean) => {
     setIsDetailDrawerOpen(open);
     if (!open && !isDesktop) {
@@ -392,12 +653,15 @@ export const OrchestratorPage: React.FC = () => {
             onSelectJob={handleCommandSelectJob}
             open={isCommandBarOpen}
             onOpenChange={setIsCommandBarOpen}
+            enabled={!isAnyModalOpenExcludingCommandBar}
           />
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
             onOpenCommandBar={() => setIsCommandBarOpen(true)}
+            isFiltersOpen={isFiltersOpen}
+            onFiltersOpenChange={setIsFiltersOpen}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
             sponsorFilter={sponsorFilter}
@@ -496,6 +760,18 @@ export const OrchestratorPage: React.FC = () => {
           </DrawerContent>
         </Drawer>
       )}
+
+      <KeyboardShortcutBar activeTab={activeTab} />
+      <KeyboardShortcutDialog
+        open={isHelpDialogOpen}
+        onOpenChange={(open) => {
+          setIsHelpDialogOpen(open);
+          if (!open) {
+            localStorage.setItem("has-seen-keyboard-shortcuts", "true");
+          }
+        }}
+        activeTab={activeTab}
+      />
     </>
   );
 };

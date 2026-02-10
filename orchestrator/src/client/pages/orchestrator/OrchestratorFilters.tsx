@@ -1,4 +1,5 @@
-import { getMetaShortcutLabel } from "@client/lib/meta-key";
+import { KbdHint } from "@client/components/KbdHint";
+import { getDisplayKey, SHORTCUTS } from "@client/lib/shortcut-map";
 import type { JobSource } from "@shared/types.js";
 import { Filter, Search } from "lucide-react";
 import type React from "react";
@@ -50,6 +51,8 @@ interface OrchestratorFiltersProps {
   onSortChange: (sort: JobSort) => void;
   onResetFilters: () => void;
   filteredCount: number;
+  isFiltersOpen?: boolean;
+  onFiltersOpenChange?: (open: boolean) => void;
 }
 
 const sponsorOptions: Array<{
@@ -125,8 +128,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSortChange,
   onResetFilters,
   filteredCount,
+  isFiltersOpen: isFiltersOpenProp,
+  onFiltersOpenChange: onFiltersOpenChangeProp,
 }) => {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isFiltersOpen = isFiltersOpenProp ?? internalOpen;
+  const onFiltersOpenChange = onFiltersOpenChangeProp ?? setInternalOpen;
+
   const visibleSources = orderedFilterSources.filter((source) =>
     sourcesWithJobs.includes(source),
   );
@@ -145,7 +153,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
   const showSalaryMax =
     salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
-  const commandShortcutLabel = getMetaShortcutLabel("K");
+  const commandShortcutLabel = getDisplayKey(SHORTCUTS.search);
 
   return (
     <Tabs
@@ -154,12 +162,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
-          {tabs.map((tab) => (
+          {tabs.map((tab, index) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
               className="flex-1 flex items-center lg:flex-none gap-1.5"
             >
+              <KbdHint shortcut={String(index + 1)} className="mr-0.5" />
               <span>{tab.label}</span>
               {counts[tab.id] > 0 && (
                 <span className="text-[10px] mt-[2px] tabular-nums opacity-60">
@@ -186,7 +195,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
             </span>
           </Button>
 
-          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+          <Sheet open={isFiltersOpen} onOpenChange={onFiltersOpenChange}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
@@ -478,7 +487,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                   >
                     Reset
                   </Button>
-                  <Button type="button" onClick={() => setIsDrawerOpen(false)}>
+                  <Button
+                    type="button"
+                    onClick={() => onFiltersOpenChange?.(false)}
+                  >
                     Show {filteredCount.toLocaleString()}{" "}
                     {filteredCount === 1 ? "job" : "jobs"}
                   </Button>

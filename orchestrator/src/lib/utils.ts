@@ -103,8 +103,11 @@ export const stripHtml = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-export const safeFilenamePart = (value: string) =>
-  value.replace(/[^a-z0-9]/gi, "_");
+export const safeFilenamePart = (value: string) => {
+  const cleaned = value.replace(/[^a-z0-9]/gi, "_");
+  if (cleaned.replace(/_/g, "") === "") return "Unknown";
+  return cleaned || "Unknown";
+};
 
 // --- Comparisons & Math ---
 export function arraysEqual(a: string[], b: string[]) {

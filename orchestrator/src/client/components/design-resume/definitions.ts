@@ -3,6 +3,7 @@ import type { ItemFieldConfig } from "./ItemDialog";
 export type ItemDefinition = {
   key: string;
   title: string;
+  singularTitle: string;
   description: string;
   primaryField: string;
   secondaryField?: string;
@@ -14,6 +15,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "profiles",
     title: "Profiles",
+    singularTitle: "Profile",
     description: "Links and handles shown alongside the resume basics.",
     primaryField: "network",
     secondaryField: "username",
@@ -46,6 +48,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "experience",
     title: "Experience",
+    singularTitle: "Experience entry",
     description: "Roles, companies, and rich descriptions.",
     primaryField: "company",
     secondaryField: "position",
@@ -83,6 +86,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "education",
     title: "Education",
+    singularTitle: "Education entry",
     description: "Schooling, degrees, and achievements.",
     primaryField: "school",
     secondaryField: "degree",
@@ -118,6 +122,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "projects",
     title: "Projects",
+    singularTitle: "Project",
     description: "The projects JobOps will use for tailoring.",
     primaryField: "name",
     secondaryField: "period",
@@ -147,6 +152,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "skills",
     title: "Skills",
+    singularTitle: "Skill group",
     description: "Categories and keywords used for tailoring output.",
     primaryField: "name",
     secondaryField: "proficiency",
@@ -170,6 +176,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "languages",
     title: "Languages",
+    singularTitle: "Language",
     description: "Spoken or written languages.",
     primaryField: "language",
     secondaryField: "fluency",
@@ -189,6 +196,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "interests",
     title: "Interests",
+    singularTitle: "Interest",
     description: "Interests and topic clusters.",
     primaryField: "name",
     secondaryField: "icon",
@@ -208,6 +216,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "awards",
     title: "Awards",
+    singularTitle: "Award",
     description: "Awards and recognitions.",
     primaryField: "title",
     secondaryField: "awarder",
@@ -237,6 +246,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "certifications",
     title: "Certifications",
+    singularTitle: "Certification",
     description: "Formal certificates and credentials.",
     primaryField: "title",
     secondaryField: "issuer",
@@ -266,6 +276,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "publications",
     title: "Publications",
+    singularTitle: "Publication",
     description: "Published writing and papers.",
     primaryField: "title",
     secondaryField: "publisher",
@@ -295,6 +306,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "volunteer",
     title: "Volunteer",
+    singularTitle: "Volunteer entry",
     description: "Volunteer work and community contributions.",
     primaryField: "organization",
     secondaryField: "position",
@@ -326,6 +338,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
   {
     key: "references",
     title: "References",
+    singularTitle: "Reference",
     description: "References and supporting contacts.",
     primaryField: "name",
     secondaryField: "position",

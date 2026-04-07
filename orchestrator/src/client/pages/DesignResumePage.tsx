@@ -392,7 +392,7 @@ export const DesignResumePage: React.FC = () => {
       {dialogState && draft ? (
         <ItemDialog
           open={Boolean(dialogState)}
-          title={`${dialogState.index == null ? "Add" : "Edit"} ${dialogState.definition.title.slice(0, -1) || dialogState.definition.title}`}
+          title={`${dialogState.index == null ? "Add" : "Edit"} ${dialogState.definition.singularTitle}`}
           description={dialogState.definition.description}
           item={activeDialogItem}
           fields={dialogState.definition.fields}

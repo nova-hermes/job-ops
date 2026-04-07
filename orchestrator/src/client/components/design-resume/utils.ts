@@ -67,7 +67,9 @@ export function makeDownload(fileName: string, payload: unknown) {
   anchor.href = url;
   anchor.download = fileName;
   anchor.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
 }
 
 export async function fileToDataUrl(file: File): Promise<string> {

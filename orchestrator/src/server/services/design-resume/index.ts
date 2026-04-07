@@ -25,6 +25,7 @@ const DESIGN_RESUME_DIR = join(getDataDir(), "design-resume");
 const DESIGN_RESUME_ASSET_DIR = join(DESIGN_RESUME_DIR, "assets");
 const DESIGN_RESUME_DEFAULT_ID = "primary";
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
@@ -478,9 +479,21 @@ function parseDataUrl(input: string): { mimeType: string; data: Buffer } {
     throw badRequest("Only PNG, JPEG, and WebP images are supported.");
   }
 
+  // Base64 expands by roughly 4/3, so we can reject oversized payloads
+  // before decoding the entire string into memory.
+  const estimatedByteLength = Math.floor((match[2].length * 3) / 4);
+  if (estimatedByteLength > MAX_IMAGE_BYTES) {
+    throw badRequest("Images must be 5 MB or smaller.");
+  }
+
+  const data = Buffer.from(match[2], "base64");
+  if (data.byteLength > MAX_IMAGE_BYTES) {
+    throw badRequest("Images must be 5 MB or smaller.");
+  }
+
   return {
     mimeType,
-    data: Buffer.from(match[2], "base64"),
+    data,
   };
 }
 
@@ -565,7 +578,11 @@ function applyPatchOperation(
     case "replace": {
       if (Array.isArray(parent)) {
         const index = key === "-" ? parent.length : Number.parseInt(key, 10);
-        if (!Number.isInteger(index) || index < 0 || index > parent.length) {
+        const isValidReplaceIndex =
+          operation.op === "replace"
+            ? Number.isInteger(index) && index >= 0 && index < parent.length
+            : Number.isInteger(index) && index >= 0 && index <= parent.length;
+        if (!isValidReplaceIndex) {
           throw badRequest(`Invalid array patch path: ${operation.path}`);
         }
         if (operation.op === "replace") {
@@ -653,6 +670,20 @@ async function deleteAssetFile(storagePath: string): Promise<void> {
   }
 }
 
+async function clearDesignResumeAssetsForDocument(
+  documentId: string,
+): Promise<void> {
+  const assets = await designResumeRepo.listDesignResumeAssets(documentId);
+  if (assets.length === 0) return;
+
+  await designResumeRepo.deleteDesignResumeAssetsForDocument(documentId);
+  await Promise.all(
+    assets.map(async (asset) => {
+      await deleteAssetFile(asset.storagePath);
+    }),
+  );
+}
+
 export async function getCurrentDesignResume(): Promise<DesignResumeDocument | null> {
   try {
     return hydrateDocument(
@@ -684,6 +715,7 @@ export async function getDesignResumeStatus(): Promise<DesignResumeStatusRespons
 }
 
 export async function importDesignResumeFromReactiveResume(): Promise<DesignResumeDocument> {
+  const existingDocument = await getCurrentDesignResume();
   const { resumeId } = await getConfiguredRxResumeBaseResumeId();
   if (!resumeId) {
     throw badRequest(
@@ -709,6 +741,10 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
     importedAt: now,
     updatedAt: now,
   });
+
+  if (existingDocument?.id) {
+    await clearDesignResumeAssetsForDocument(existingDocument.id);
+  }
 
   return (await hydrateDocument(saved)) as DesignResumeDocument;
 }
@@ -777,22 +813,24 @@ export async function uploadDesignResumePicture(input: {
     },
   );
 
-  await writeFile(storagePath, parsed.data);
   const now = new Date().toISOString();
-  const inserted = await designResumeRepo.insertDesignResumeAsset({
-    id: assetId,
-    documentId: current.id,
-    kind: "picture",
-    originalName: basename(input.fileName || `picture${extname(storagePath)}`),
-    mimeType: parsed.mimeType,
-    byteSize: parsed.data.byteLength,
-    storagePath,
-    updatedAt: now,
-  });
-
-  if (existingAsset) {
-    await designResumeRepo.deleteDesignResumeAsset(existingAsset.id);
-    await deleteAssetFile(existingAsset.storagePath);
+  try {
+    await writeFile(storagePath, parsed.data);
+    await designResumeRepo.insertDesignResumeAsset({
+      id: assetId,
+      documentId: current.id,
+      kind: "picture",
+      originalName: basename(
+        input.fileName || `picture${extname(storagePath)}`,
+      ),
+      mimeType: parsed.mimeType,
+      byteSize: parsed.data.byteLength,
+      storagePath,
+      updatedAt: now,
+    });
+  } catch (error) {
+    await deleteAssetFile(storagePath);
+    throw error;
   }
 
   const nextDocument = structuredClone(current.resumeJson) as Record<
@@ -803,14 +841,27 @@ export async function uploadDesignResumePicture(input: {
   nextDocument.picture = {
     ...defaultPicture(),
     ...picture,
-    url: contentUrlForAsset(inserted?.id ?? assetId),
+    url: contentUrlForAsset(assetId),
     show: true,
   };
 
-  return updateCurrentDesignResume({
-    baseRevision: current.revision,
-    document: nextDocument,
-  });
+  try {
+    const updated = await updateCurrentDesignResume({
+      baseRevision: current.revision,
+      document: nextDocument,
+    });
+
+    if (existingAsset) {
+      await designResumeRepo.deleteDesignResumeAsset(existingAsset.id);
+      await deleteAssetFile(existingAsset.storagePath);
+    }
+
+    return updated;
+  } catch (error) {
+    await designResumeRepo.deleteDesignResumeAsset(assetId);
+    await deleteAssetFile(storagePath);
+    throw error;
+  }
 }
 
 export async function deleteDesignResumePicture(): Promise<DesignResumeDocument> {

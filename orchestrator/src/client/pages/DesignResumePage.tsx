@@ -33,6 +33,9 @@ import {
 } from "../components/design-resume/utils";
 import { queryKeys } from "../lib/queryKeys";
 
+const DESIGN_RESUME_V5_REQUIRED_MESSAGE =
+  "Design Resume only works with Reactive Resume v5. Switch Reactive Resume to v5 API key auth in Settings, choose a v5 base resume, then come back here.";
+
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
@@ -53,6 +56,15 @@ export const DesignResumePage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
+  const rxresumeMode = settings?.rxresumeMode?.value ?? "v5";
+  const isRxResumeV4Mode = rxresumeMode === "v4";
+  const importBlockedMessage = isRxResumeV4Mode
+    ? DESIGN_RESUME_V5_REQUIRED_MESSAGE
+    : null;
+  const previewBlockedMessage =
+    pdfRenderer === "rxresume" && isRxResumeV4Mode
+      ? "Reactive Resume export preview needs a v5 Reactive Resume connection. Switch Reactive Resume to v5 in Settings, or switch the template above to Local LaTeX."
+      : null;
 
   useEffect(() => {
     if (!document) return;
@@ -128,6 +140,12 @@ export const DesignResumePage: React.FC = () => {
   }, [dialogState, draft]);
 
   const handleImport = async () => {
+    if (importBlockedMessage) {
+      setSaveState("error");
+      toast.error(importBlockedMessage);
+      return;
+    }
+
     try {
       setSaveState("saving");
       const imported = await api.importDesignResumeFromRxResume();
@@ -159,6 +177,11 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const handleDownloadPdf = async () => {
+    if (previewBlockedMessage) {
+      toast.error(previewBlockedMessage);
+      return;
+    }
+
     try {
       setPdfDownloading(true);
       const generated = await api.generateDesignResumePdf();
@@ -310,7 +333,12 @@ export const DesignResumePage: React.FC = () => {
               </SheetContent>
             </Sheet>
 
-            <Button type="button" variant="outline" onClick={handleImport}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleImport}
+              disabled={Boolean(importBlockedMessage)}
+            >
               <Import className="mr-2 h-4 w-4" />
               {status?.exists ? "Re-import" : "Import"}
             </Button>
@@ -319,7 +347,11 @@ export const DesignResumePage: React.FC = () => {
               type="button"
               variant="outline"
               onClick={handleDownloadPdf}
-              disabled={!status?.exists || pdfDownloading}
+              disabled={
+                !status?.exists ||
+                pdfDownloading ||
+                Boolean(previewBlockedMessage)
+              }
             >
               <FileDown className="mr-2 h-4 w-4" />
               {pdfDownloading ? "Preparing PDF" : "Download PDF"}
@@ -353,11 +385,19 @@ export const DesignResumePage: React.FC = () => {
                 between tools.
               </p>
               <div className="flex justify-center gap-3">
-                <Button type="button" onClick={handleImport}>
+                <Button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={Boolean(importBlockedMessage)}
+                >
                   <Import className="mr-2 h-4 w-4" />
                   Import resume
                 </Button>
-                {error ? (
+                {importBlockedMessage ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+                    {importBlockedMessage}
+                  </div>
+                ) : error ? (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
                     {error instanceof Error
                       ? error.message
@@ -389,6 +429,7 @@ export const DesignResumePage: React.FC = () => {
               isUpdatingRenderer={rendererUpdating || settingsLoading}
               isDirty={dirty}
               saveState={saveState}
+              blockedMessage={previewBlockedMessage}
               onPdfRendererChange={handlePdfRendererChange}
             />
           </div>

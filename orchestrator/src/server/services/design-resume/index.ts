@@ -34,6 +34,8 @@ const LEGACY_REIMPORT_MESSAGE =
   "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
 const INVALID_V5_PREFIX =
   "Design Resume must be a valid Reactive Resume v5 document.";
+const DESIGN_RESUME_V5_REQUIRED_MESSAGE =
+  "Design Resume only works with Reactive Resume v5. Switch Reactive Resume to v5 API key auth in Settings, choose a v5 base resume, then import again.";
 
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
@@ -416,9 +418,7 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
 
   const sourceMode = upstreamResume.mode ?? "v5";
   if (sourceMode !== "v5") {
-    throw badRequest(
-      "Design Resume import now requires a Reactive Resume v5 source. Reconnect Reactive Resume with v5 and try again.",
-    );
+    throw badRequest(DESIGN_RESUME_V5_REQUIRED_MESSAGE);
   }
   const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
   const now = new Date().toISOString();

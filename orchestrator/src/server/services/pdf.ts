@@ -116,6 +116,11 @@ async function renderRxResumePdf(args: {
     const downloadUrl = await exportRxResumePdf(importedResumeId, {
       mode: preparedResume.mode,
     });
+    if (!downloadUrl || typeof downloadUrl !== "string") {
+      throw new Error(
+        "Reactive Resume did not return a PDF download URL. Switch Reactive Resume to v5 API key auth in Settings and try again.",
+      );
+    }
     await downloadRxResumePdf(downloadUrl, outputPath);
   } finally {
     if (importedResumeId) {

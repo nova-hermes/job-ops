@@ -394,7 +394,7 @@ describe("design resume service", () => {
     } as never);
 
     await expect(importDesignResumeFromReactiveResume()).rejects.toThrow(
-      "Design Resume import now requires a Reactive Resume v5 source",
+      "Design Resume only works with Reactive Resume v5",
     );
   });
 });

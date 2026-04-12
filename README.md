@@ -1,38 +1,135 @@
-# JobOps: Your Ironman Suit for Job Hunting
+<div align="center">
 
+# Job<span>Ops</span>
+
+**One search across every board. One click to tailor your CV. One place to track it all.**
+
+Your ironman suit for job hunting. You still apply to every job yourself. JobOps just makes you ten times faster.
+
+<br>
 
 <a href="https://trendshift.io/repositories/22756" target="_blank"><img src="https://trendshift.io/api/badge/repositories/22756" alt="DaKheera47%2Fjob-ops | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 [![Stars](https://img.shields.io/github/stars/DaKheera47/job-ops?style=social)](https://github.com/DaKheera47/job-ops)
 [![GHCR](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://github.com/DaKheera47/job-ops/pkgs/container/job-ops)
 [![Release](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml/badge.svg)](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml)
-[![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](Contributors)
-[![Cloud Waitlist](https://img.shields.io/badge/Cloud-Join_Waitlist-orange?style=flat-square)](https://try.jobops.app?utm_source=github&utm_medium=badge&utm_campaign=waitlist)
+[![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](https://github.com/DaKheera47/job-ops/graphs/contributors)
 
-<img width="1200" height="600" alt="2k" src="https://github.com/user-attachments/assets/14fdc392-0e96-43be-bc1f-cf819ab2afc4" />
+<br>
 
-Stop applying blind.
+800+ users · 4,000+ job searches run · #3 on GitHub Trending for TypeScript
 
-Scrapes major job boards (LinkedIn, Indeed, Glassdoor & more), AI-scores suitability, tailors resumes (RxResume), and tracks application emails automatically.
+<br>
 
-You still apply to every job yourself. JobOps just finds jobs, makes sure you're applying to the right ones with a tailored CV, and not losing track of where you're at.
+<img width="1200" height="600" alt="JobOps Dashboard" src="https://github.com/user-attachments/assets/14fdc392-0e96-43be-bc1f-cf819ab2afc4" />
 
-Self-hosted. Docker-based.
+</div>
 
-## A demo's worth a thousand words
+---
 
+## What is JobOps?
 
+JobOps searches LinkedIn, Indeed, Glassdoor and 10+ job boards from one screen, rewrites your CV for each role, scores your fit, checks visa sponsorship status, and tracks every application in one place.
+
+It does not auto-apply. Recruiters can tell when applications are automated and it gets you blacklisted. JobOps gives you the speed without sacrificing quality.
+
+<div align="center">
 
 https://github.com/user-attachments/assets/ec5bc249-aad5-41f2-b1ff-f7b3b6e6f7b8
 
+</div>
 
+---
 
+## Quick Start
 
-## Documentation (Start Here)
+Prefer a guided walkthrough? Follow the [Self-Hosting Guide](https://jobops.dakheera47.com/docs/getting-started/self-hosting).
 
-JobOps ships with full docs for setup, architecture, extractors, and troubleshooting.
+```bash
+git clone https://github.com/DaKheera47/job-ops.git
+cd job-ops
+docker compose up -d
+```
 
-If you want the serious view of the project, start here:
+Open `http://localhost:3005` and follow the onboarding wizard. You'll be searching in under 10 minutes.
+
+---
+
+## How It Works
+
+| Step | What happens |
+|------|-------------|
+| **Search** | Scrapes 10+ job boards for roles matching your criteria |
+| **Score** | AI ranks each job 0-100 against your profile |
+| **Tailor** | Generates a rewritten CV matched to each job description |
+| **Export** | Creates a polished PDF locally, or via [Reactive Resume](https://rxresu.me) |
+| **Track** | Connects to Gmail and auto-detects interviews, offers, and rejections |
+
+---
+
+## Supported Job Boards
+
+| Platform | Focus |
+|----------|-------|
+| LinkedIn | Global |
+| Indeed | Global |
+| Glassdoor | Global |
+| Adzuna | Multi-country API |
+| Hiring Cafe | Global |
+| startup.jobs | Startup/remote roles |
+| Working Nomads | Remote-only |
+| Gradcracker | STEM/Grads (UK) |
+| UK Visa Jobs | Sponsorship (UK) |
+| Golang Jobs | Go developers |
+
+Custom extractors can be added via TypeScript. See the [extractor docs](https://jobops.dakheera47.com/docs/extractors/overview).
+
+---
+
+## Post-Application Tracking
+
+Connect your Gmail and JobOps watches for recruiter replies automatically.
+
+- *"We'd like to invite you to interview..."* → Status updates to **Interviewing**
+- *"Unfortunately we won't be progressing..."* → Status updates to **Rejected**
+
+No manual updates. No spreadsheets. See the [tracking docs](https://jobops.dakheera47.com/docs/features/post-application-tracking) for setup.
+
+---
+
+## AI Providers
+
+JobOps works with the model provider you already use:
+
+- OpenAI
+- Google Gemini
+- OpenRouter
+- Any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
+
+---
+
+## Cloud
+
+Don't want to self-host? JobOps Cloud gives you your own hosted instance with nothing to install.
+
+<div align="center">
+
+| | BYOK | Zero Setup |
+|---|:---:|:---:|
+| **Price** | £20/month | £50/month |
+| **All features** | ✓ | ✓ |
+| **Your own instance** | ✓ | ✓ |
+| **Managed updates** | ✓ | ✓ |
+| **AI provider** | Bring your own key | Included, no config needed |
+| | [Get Started](https://buy.stripe.com/bJeeVc67v9S42AFeWj4c800) | [Get Started](https://buy.stripe.com/dRmbJ0cvT2pC2AF6pN4c801) |
+
+</div>
+
+Self-hosted will always be free and open source.
+
+---
+
+## Documentation
 
 - [Documentation Home](https://jobops.dakheera47.com/docs/)
 - [Self-Hosting Guide](https://jobops.dakheera47.com/docs/getting-started/self-hosting)
@@ -41,85 +138,21 @@ If you want the serious view of the project, start here:
 - [Extractor System](https://jobops.dakheera47.com/docs/extractors/overview)
 - [Troubleshooting](https://jobops.dakheera47.com/docs/troubleshooting/common-problems)
 
-## Quick Start (10 Min)
-
-Prefer guided setup? Follow the [Self-Hosting Guide](https://jobops.dakheera47.com/docs/getting-started/self-hosting).
-
-```bash
-# 1. Download
-git clone https://github.com/DaKheera47/job-ops.git
-cd job-ops
-
-# 2. Start (Pulls pre-built image)
-docker compose up -d
-
-# 3. Launch Dashboard
-# Open http://localhost:3005 to start the onboarding wizard
-
-```
-
-## Why JobOps?
-
-* **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor, Adzuna, Hiring Cafe, startup.jobs, Working Nomads, Gradcracker, UK Visa Jobs**.
-* **AI Scoring**: Ranks jobs by fit against *your* profile using your preferred LLM (OpenAI, OpenRouter, `openai-compatible` endpoints such as LM Studio/Ollama, Gemini).
-* **Auto-Tailoring**: Generates custom resumes (PDFs) for every application using RxResume.
-* **Email Tracking**: Connect Gmail to auto-detect interviews, offers, and rejections.
-* **Self-Hosted**: Your data stays with you. SQLite database. No SaaS fees.
-
-## Workflow
-
-1. **Search**: Scrapes job boards for roles matching your criteria.
-2. **Score**: AI ranks jobs (0-100) based on your resume/profile.
-3. **Tailor**: Generates a custom resume summary & keyword optimization for top matches.
-4. **Export**: Uses [RxResume](https://rxresu.me) to create tailored PDFs.
-5. **Track**: "Smart Router" AI watches your inbox for recruiter replies.
-
-## Supported Extractors
-
-| Platform | Focus |
-| --- | --- |
-| **LinkedIn** | Global / General |
-| **Indeed** | Global / General |
-| **Glassdoor** | Global / General |
-| **Adzuna** | Multi-country API source |
-| **Hiring Cafe** | Global / General |
-| **startup.jobs** | Startup-focused remote roles |
-| **Working Nomads** | Remote-only curated jobs |
-| **Gradcracker** | STEM / Grads (UK) |
-| **UK Visa Jobs** | Sponsorship (UK) |
-
-*(More extractors can be added via TypeScript - see [extractors documentation](https://jobops.dakheera47.com/docs/extractors/overview))*
-
-## Post-App Tracking (Killer Feature)
-
-Connect Gmail -> AI routes emails to your applied jobs.
-
-* "We'd like to interview you..." -> **Status: Interviewing** (Auto-updated)
-* "Unfortunately..." -> **Status: Rejected** (Auto-updated)
-
-See [post-application tracking docs](https://jobops.dakheera47.com/docs/features/post-application-tracking) for setup.
-
-**Note on Analytics**: The alpha version includes anonymous analytics (Umami) to help debug performance. To opt-out, block `umami.dakheera47.com` in your firewall/DNS.
-
-## Cloud Version (Coming Soon)
-
-Self-hosting not your thing? A hosted version of JobOps is coming.
-
-- No Docker required
-- Up and running in 2 minutes
-- Managed updates
-- Self-hosted will always be free and open source
-
-Join the waitlist at [https://try.jobops.app](https://try.jobops.app?utm_source=github&utm_medium=readme&utm_campaign=waitlist)
-<br>
-Support me on [kofi](https://ko-fi.com/shaheersarfaraz)
+---
 
 ## Contributing
 
-Want to contribute code, docs, or extractors? Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+Contributions are welcome. Whether it's code, docs, or new extractors, start with [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
+<a href="https://github.com/DaKheera47/job-ops/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=DaKheera47/job-ops" />
+</a>
+
+---
 
 ## Star History
+
+<div align="center">
 
 <a href="https://www.star-history.com/#DaKheera47/job-ops&type=date&legend=top-left">
 <picture>
@@ -129,8 +162,26 @@ Want to contribute code, docs, or extractors? Start with [`CONTRIBUTING.md`](./C
 </picture>
 </a>
 
+</div>
+
+---
+
+## Analytics
+
+JobOps includes anonymous usage analytics (Umami) to help improve the product. To opt out, block `umami.dakheera47.com` in your firewall or DNS.
+
 ## License
 
-**AGPLv3 + Commons Clause** - You can self-host, use, and modify JobOps, but
-you cannot sell the software itself or offer paid hosted/support services whose
-value substantially comes from JobOps. See [LICENSE](LICENSE).
+**AGPLv3 + Commons Clause**
+
+You can self-host, use, and modify JobOps freely. You cannot sell the software itself or offer paid hosted services whose value substantially comes from JobOps. See [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+Built by [Shaheer Sarfaraz](https://github.com/DaKheera47)
+
+[Website](https://jobops.app) · [Cloud](https://jobops.app) · [Documentation](https://jobops.dakheera47.com/docs/) · [Ko-fi](https://ko-fi.com/shaheersarfaraz)
+
+</div>

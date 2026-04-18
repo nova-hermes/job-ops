@@ -1852,3 +1852,71 @@ export async function deleteBackup(filename: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// ============================================================================
+// BILLING
+// ============================================================================
+
+export interface PlanInfo {
+  planId: string;
+  planName: string;
+  isPaid: boolean;
+  limits: {
+    jobsPerSearch: number | null;
+    resumeGenerations: number | null;
+    ghostwriterUses: number | null;
+    applicationsPerDay: number | null;
+    tracerLinks: number | null;
+    visaSponsorFilter: boolean;
+    exportToPdf: boolean;
+    prioritySupport: boolean;
+  };
+  features: string[];
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+}
+
+export async function getPlanInfo(): Promise<PlanInfo> {
+  return fetchApi<PlanInfo>("/billing/plan");
+}
+
+export async function createCheckout(planId: string): Promise<{
+  message: string;
+  planId: string;
+  simulated: boolean;
+}> {
+  return fetchApi("/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ planId }),
+  });
+}
+
+export async function createCryptoCheckout(planId: string): Promise<{
+  message: string;
+  planId: string;
+  simulated: boolean;
+}> {
+  return fetchApi("/billing/crypto/checkout", {
+    method: "POST",
+    body: JSON.stringify({ planId }),
+  });
+}
+
+export async function downgradeToFree(): Promise<{
+  message: string;
+  planId: string;
+}> {
+  return fetchApi("/billing/downgrade", {
+    method: "POST",
+  });
+}
+
+export async function createPortalSession(): Promise<{
+  url: string | null;
+  message: string;
+  simulated: boolean;
+}> {
+  return fetchApi("/billing/portal", {
+    method: "POST",
+  });
+}

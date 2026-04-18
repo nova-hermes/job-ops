@@ -560,6 +560,19 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_tracer_click_events_clicked_at ON tracer_click_events(clicked_at)`,
   `CREATE INDEX IF NOT EXISTS idx_tracer_click_events_is_likely_bot ON tracer_click_events(is_likely_bot)`,
   `CREATE INDEX IF NOT EXISTS idx_tracer_click_events_unique_fingerprint_hash ON tracer_click_events(unique_fingerprint_hash)`,
+
+  // Billing: user plans table
+  `CREATE TABLE IF NOT EXISTS user_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan TEXT NOT NULL DEFAULT 'free',
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    nowpayments_payment_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `INSERT OR IGNORE INTO user_plans (plan) VALUES ('free')`,
+
   // Ensure only one running run per thread; backfill any duplicates first.
   `WITH ranked AS (
       SELECT

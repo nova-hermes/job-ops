@@ -1,5 +1,6 @@
 import {
   Columns3,
+  CreditCard,
   FilePenLine,
   Home,
   Inbox,
@@ -49,6 +50,7 @@ export const NAV_LINKS: NavLink[] = [
     activePaths: ["/tracer-links"],
   },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
+  { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

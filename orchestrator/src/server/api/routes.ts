@@ -5,6 +5,7 @@
 import { Router } from "express";
 import { authRouter } from "./routes/auth";
 import { backupRouter } from "./routes/backup";
+import { billingRouter } from "./routes/billing";
 import { databaseRouter } from "./routes/database";
 import { demoRouter } from "./routes/demo";
 import { designResumeRouter } from "./routes/design-resume";
@@ -41,4 +42,5 @@ apiRouter.use("/onboarding", onboardingRouter);
 apiRouter.use("/backups", backupRouter);
 apiRouter.use("/tracer-links", tracerLinksRouter);
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/billing", billingRouter);
 apiRouter.use("/", extractorHealthRouter);

@@ -552,3 +552,37 @@ export type TracerLinkRow = typeof tracerLinks.$inferSelect;
 export type NewTracerLinkRow = typeof tracerLinks.$inferInsert;
 export type TracerClickEventRow = typeof tracerClickEvents.$inferSelect;
 export type NewTracerClickEventRow = typeof tracerClickEvents.$inferInsert;
+
+// ============================================================================
+// BILLING / PLANS
+// ============================================================================
+
+export const userPlans = sqliteTable("user_plans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  plan: text("plan").notNull().default("free"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  nowpaymentsPaymentId: text("nowpayments_payment_id"),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+});
+
+export type UserPlanRow = typeof userPlans.$inferSelect;
+export type NewUserPlanRow = typeof userPlans.$inferInsert;
+
+// ============================================================================
+// BILLING / PLANS
+// ============================================================================
+
+export const userPlans = sqliteTable("user_plans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  plan: text("plan").notNull().default("free"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  nowpaymentsPaymentId: text("nowpayments_payment_id"),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+});
+
+export type UserPlanRow = typeof userPlans.$inferSelect;
+export type NewUserPlanRow = typeof userPlans.$inferInsert;

@@ -43,8 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM build-base AS python-deps
 
 # Install Python dependencies with pip cache.
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install --break-system-packages playwright python-jobspy
+RUN     pip3 install --break-system-packages playwright python-jobspy
 
 # Install Firefox for Python Playwright.
 RUN python3 -m playwright install firefox
@@ -65,8 +64,7 @@ COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --workspaces --include-workspace-root --include=dev \
+RUN     npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
 
 # Fetch Camoufox binaries before copying source to keep the download cached.
@@ -119,8 +117,7 @@ COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
 # Install production Node dependencies only.
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --workspaces --include-workspace-root --omit=dev \
+RUN     npm install --workspaces --include-workspace-root --omit=dev \
     --no-audit --no-fund --progress=false
 
 FROM runtime-base AS tectonic

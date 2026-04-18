@@ -1,8 +1,12 @@
-import React from "react";
+import { PageHeader } from "@client/components/layout";
 
 export default function BillingPage() {
-  return React.createElement("div", { style: { padding: "2rem" } },
-    React.createElement("h1", null, "Billing"),
-    React.createElement("p", null, "If you can see this, the route works.")
+  return (
+    <div>
+      <PageHeader title="Billing" description="Manage your subscription and plan" />
+      <div style={{ padding: "2rem" }}>
+        <p>If you can see this, PageHeader works.</p>
+      </div>
+    </div>
   );
 }

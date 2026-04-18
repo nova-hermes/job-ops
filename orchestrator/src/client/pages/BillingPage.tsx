@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Check, CreditCard, Bitcoin, Sparkles, Zap, Lock } from "lucide-react";
-import type { PlanId } from "@shared/plans";
 
 // Inline plan data to avoid import issues
 const PLANS: Record<string, {

@@ -2,7 +2,7 @@ import * as api from "@client/api";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Lock, Sparkles } from "lucide-react";
 import type { PlanLimits } from "@shared/plans";
 

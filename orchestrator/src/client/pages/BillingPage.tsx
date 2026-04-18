@@ -3,8 +3,8 @@ import { PageHeader } from "@client/components/layout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,15 +12,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@components/ui/card";
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog";
-import { Separator } from "@components/ui/separator";
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { Check, CreditCard, Bitcoin, Sparkles, Zap } from "lucide-react";
 import { PLANS, type PlanId } from "@shared/plans";
 

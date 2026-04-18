@@ -3,26 +3,75 @@ import { PageHeader } from "@client/components/layout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Check, CreditCard, Bitcoin, Sparkles, Zap } from "lucide-react";
-import { PLANS, type PlanId } from "@shared/plans";
+import { Check, CreditCard, Bitcoin, Sparkles, Zap, Lock } from "lucide-react";
+import type { PlanId } from "@shared/plans";
+
+// Inline plan data to avoid import issues
+const PLANS: Record<string, {
+  id: string;
+  name: string;
+  tagline: string;
+  price: number;
+  interval: string | null;
+  features: string[];
+}> = {
+  free: {
+    id: "free",
+    name: "Free",
+    tagline: "Get started with the basics",
+    price: 0,
+    interval: null,
+    features: [
+      "10 jobs per search",
+      "3 resume generations",
+      "3 ghostwriter uses",
+      "5 applications per day",
+      "5 active tracer links",
+    ],
+  },
+  pro_monthly: {
+    id: "pro_monthly",
+    name: "Pro",
+    tagline: "Unlimited everything",
+    price: 9,
+    interval: "month",
+    features: [
+      "Unlimited job searches",
+      "Unlimited resume generations",
+      "Unlimited ghostwriter uses",
+      "Unlimited applications",
+      "Unlimited tracer links",
+      "Visa sponsor filter",
+      "Export to PDF",
+      "Priority support",
+    ],
+  },
+  pro_yearly: {
+    id: "pro_yearly",
+    name: "Pro",
+    tagline: "Save 27% with annual billing",
+    price: 79,
+    interval: "year",
+    features: [
+      "Everything in Pro Monthly",
+      "Save $29/year",
+      "Priority support",
+    ],
+  },
+  lifetime: {
+    id: "lifetime",
+    name: "Lifetime",
+    tagline: "One-time payment, forever access",
+    price: 149,
+    interval: "once",
+    features: [
+      "Everything in Pro",
+      "One-time payment",
+      "Lifetime updates",
+      "Early access to new features",
+    ],
+  },
+};
 
 function PaymentMethodDialog({
   open,
@@ -34,7 +83,7 @@ function PaymentMethodDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  planId: PlanId;
+  planId: string;
   planName: string;
   price: number;
   onSuccess: () => void;
@@ -73,52 +122,56 @@ function PaymentMethodDialog({
     }
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Upgrade to {planName}</DialogTitle>
-          <DialogDescription>
-            Choose your preferred payment method for ${price}.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <Button
-            variant="outline"
-            className="h-16 justify-start gap-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg border p-6 w-full max-w-md mx-4">
+        <h2 className="text-lg font-semibold mb-2">Upgrade to {planName}</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Choose your preferred payment method for ${price}.
+        </p>
+        <div className="grid gap-4">
+          <button
+            className="flex items-center gap-4 rounded-lg border p-4 hover:bg-accent transition-colors text-left"
             onClick={handleStripe}
             disabled={isProcessing}
           >
             <CreditCard className="h-6 w-6" />
-            <div className="text-left">
+            <div>
               <div className="font-medium">Credit Card</div>
               <div className="text-sm text-muted-foreground">
                 Pay with Stripe
               </div>
             </div>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-16 justify-start gap-4"
+          </button>
+          <button
+            className="flex items-center gap-4 rounded-lg border p-4 hover:bg-accent transition-colors text-left"
             onClick={handleCrypto}
             disabled={isProcessing}
           >
             <Bitcoin className="h-6 w-6" />
-            <div className="text-left">
+            <div>
               <div className="font-medium">Cryptocurrency</div>
               <div className="text-sm text-muted-foreground">
                 BTC, ETH, USDC, USDT
               </div>
             </div>
-          </Button>
+          </button>
           {isProcessing && (
             <p className="text-center text-sm text-muted-foreground">
               Processing payment...
             </p>
           )}
+          <button
+            className="text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -127,48 +180,42 @@ function PlanCard({
   isCurrentPlan,
   onUpgrade,
 }: {
-  plan: (typeof PLANS)[PlanId];
+  plan: typeof PLANS[string];
   isCurrentPlan: boolean;
-  onUpgrade: (planId: PlanId) => void;
+  onUpgrade: (planId: string) => void;
 }) {
   const isPro = plan.id === "pro_monthly" || plan.id === "pro_yearly";
   const isLifetime = plan.id === "lifetime";
 
   return (
-    <Card
-      className={`relative flex flex-col ${
-        isPro ? "border-primary shadow-md" : ""
-      }`}
-    >
+    <div className={`relative flex flex-col rounded-lg border p-6 ${isPro ? "border-primary shadow-md" : ""}`}>
       {isPro && (
-        <Badge className="absolute -top-2 right-4" variant="default">
+        <span className="absolute -top-2 right-4 inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
           <Sparkles className="mr-1 h-3 w-3" />
           Popular
-        </Badge>
+        </span>
       )}
       {isLifetime && (
-        <Badge className="absolute -top-2 right-4" variant="secondary">
+        <span className="absolute -top-2 right-4 inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
           <Zap className="mr-1 h-3 w-3" />
           Best Value
-        </Badge>
+        </span>
       )}
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
           {plan.name}
           {plan.interval === "year" && (
-            <Badge variant="outline">Yearly</Badge>
+            <span className="text-xs border rounded px-1.5 py-0.5">Yearly</span>
           )}
           {plan.interval === "month" && (
-            <Badge variant="outline">Monthly</Badge>
+            <span className="text-xs border rounded px-1.5 py-0.5">Monthly</span>
           )}
-        </CardTitle>
-        <CardDescription>{plan.tagline}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1">
+        </h3>
+        <p className="text-sm text-muted-foreground">{plan.tagline}</p>
+      </div>
+      <div className="flex-1">
         <div className="mb-4">
-          <span className="text-3xl font-bold">
-            ${plan.price}
-          </span>
+          <span className="text-3xl font-bold">${plan.price}</span>
           {plan.interval === "month" && (
             <span className="text-muted-foreground">/month</span>
           )}
@@ -187,27 +234,30 @@ function PlanCard({
             </li>
           ))}
         </ul>
-      </CardContent>
-      <CardFooter>
+      </div>
+      <div className="mt-6">
         {isCurrentPlan ? (
-          <Button variant="outline" className="w-full" disabled>
+          <button className="w-full rounded-md border px-4 py-2 text-sm opacity-50 cursor-not-allowed" disabled>
             Current Plan
-          </Button>
+          </button>
         ) : plan.price === 0 ? (
-          <Button variant="outline" className="w-full" disabled>
+          <button className="w-full rounded-md border px-4 py-2 text-sm opacity-50 cursor-not-allowed" disabled>
             Free
-          </Button>
+          </button>
         ) : (
-          <Button
-            className="w-full"
-            variant={isPro ? "default" : "outline"}
+          <button
+            className={`w-full rounded-md px-4 py-2 text-sm font-medium ${
+              isPro
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border hover:bg-accent"
+            }`}
             onClick={() => onUpgrade(plan.id)}
           >
             Upgrade
-          </Button>
+          </button>
         )}
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -215,7 +265,7 @@ export default function BillingPage() {
   const queryClient = useQueryClient();
   const [paymentDialog, setPaymentDialog] = useState<{
     open: boolean;
-    planId: PlanId;
+    planId: string;
   }>({ open: false, planId: "pro_monthly" });
 
   const { data: planInfo, isLoading } = useQuery({
@@ -236,7 +286,7 @@ export default function BillingPage() {
     },
   });
 
-  const handleUpgrade = (planId: PlanId) => {
+  const handleUpgrade = (planId: string) => {
     setPaymentDialog({ open: true, planId });
   };
 
@@ -258,7 +308,7 @@ export default function BillingPage() {
     );
   }
 
-  const currentPlanId = (planInfo?.planId as PlanId) || "free";
+  const currentPlanId = planInfo?.planId || "free";
   const selectedPlan = PLANS[paymentDialog.planId];
 
   return (
@@ -269,49 +319,43 @@ export default function BillingPage() {
       />
 
       {/* Current Plan */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold">
-                {planInfo?.planName || "Free"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {planInfo?.isPaid
-                  ? "Active subscription"
-                  : "No active subscription"}
-              </p>
-            </div>
-            {planInfo?.isPaid && (
-              <Button
-                variant="outline"
-                onClick={() => downgradeMutation.mutate()}
-                disabled={downgradeMutation.isPending}
-              >
-                Downgrade to Free
-              </Button>
-            )}
+      <div className="rounded-lg border mb-8 p-6">
+        <h2 className="text-lg font-semibold mb-4">Current Plan</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold">
+              {planInfo?.planName || "Free"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {planInfo?.isPaid
+                ? "Active subscription"
+                : "No active subscription"}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          {planInfo?.isPaid && (
+            <button
+              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+              onClick={() => downgradeMutation.mutate()}
+              disabled={downgradeMutation.isPending}
+            >
+              Downgrade to Free
+            </button>
+          )}
+        </div>
+      </div>
 
-      <Separator className="my-8" />
+      <hr className="my-8" />
 
       {/* Plan Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {(Object.values(PLANS) as Array<(typeof PLANS)[PlanId]>).map(
-          (plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrentPlan={plan.id === currentPlanId}
-              onUpgrade={handleUpgrade}
-            />
-          )
-        )}
+        {Object.values(PLANS).map((plan) => (
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            isCurrentPlan={plan.id === currentPlanId}
+            onUpgrade={handleUpgrade}
+          />
+        ))}
       </div>
 
       {/* Payment Method Dialog */}
@@ -321,8 +365,8 @@ export default function BillingPage() {
           setPaymentDialog((prev) => ({ ...prev, open }))
         }
         planId={paymentDialog.planId}
-        planName={selectedPlan.name}
-        price={selectedPlan.price}
+        planName={selectedPlan?.name || "Pro"}
+        price={selectedPlan?.price || 9}
         onSuccess={handlePaymentSuccess}
       />
     </div>

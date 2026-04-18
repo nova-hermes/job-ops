@@ -6,7 +6,11 @@ export const OnboardingGate: React.FC = () => {
   const location = useLocation();
   const { checking, complete } = useOnboardingRequirement();
 
-  if (location.pathname === "/onboarding" || location.pathname === "/sign-in") {
+  if (
+    location.pathname === "/onboarding" ||
+    location.pathname === "/sign-in" ||
+    location.pathname === "/billing"
+  ) {
     return null;
   }
 
